@@ -3134,21 +3134,6 @@ function Calendario({ ventas, compras, gastos, cobros, inventario, cotizaciones 
 // ============================================================
 // REPORTES — con período libre e integración completa
 // ============================================================
-function MiniBar({ label, value, max, color }) {
-  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-        <span style={{ fontSize: 12, color: C.textMid, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{label}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color, flexShrink: 0 }}>{fMXN(value)}</span>
-      </div>
-      <div style={{ height: 5, background: C.bg, borderRadius: 3, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 3, transition: "width .4s" }} />
-      </div>
-    </div>
-  );
-}
-
 function Reportes({ ventas, compras, gastos, clientes, cobros, inventario }) {
   const [fechaIni, setFechaIni] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0, 10); });
   const [fechaFin, setFechaFin] = useState(today);
