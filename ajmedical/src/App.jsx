@@ -3454,68 +3454,132 @@ export default function App() {
   const activeTab = tabsVisibles.find(t => t.id === tab) || tabsVisibles[0];
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif", color: C.text, maxWidth: 520, margin: "0 auto" }}>
+    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif", color: C.text }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      <style>{`
+        * { box-sizing: border-box; }
+        /* DESKTOP: sidebar fija + contenido expandido */
+        @media (min-width: 768px) {
+          .ajm-sidebar { display: flex !important; }
+          .ajm-topnav  { display: none  !important; }
+          .ajm-content { margin-left: 220px !important; }
+          .ajm-main    { padding: 28px 36px !important; max-width: 1200px; }
+        }
+        /* MOBILE: nav horizontal arriba */
+        @media (max-width: 767px) {
+          .ajm-sidebar { display: none  !important; }
+          .ajm-topnav  { display: flex  !important; }
+          .ajm-content { margin-left: 0  !important; }
+          .ajm-main    { padding: 16px  !important; padding-bottom: 32px !important; }
+        }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #1f2d45; border-radius: 3px; }
+        @media print { .ajm-sidebar, .ajm-topnav { display: none !important; } .ajm-content { margin-left: 0 !important; } }
+      `}</style>
 
-      {/* Header */}
-      <div style={{ padding: "16px 16px 0", position: "sticky", top: 0, background: C.bg, zIndex: 10, borderBottom: `1px solid ${C.border}`, paddingBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>AJ Medical</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginTop: 1 }}>{activeTab?.label}</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{userData.nombre}</div>
-              <div style={{ fontSize: 10, color: C.textDim }}>{esAdmin ? "Administrador" : "Operaciones"}</div>
+      {/* ── SIDEBAR — solo desktop ── */}
+      <div className="ajm-sidebar" style={{
+        position: "fixed", left: 0, top: 0, bottom: 0, width: 220,
+        background: C.surface, borderRight: `1px solid ${C.border}`,
+        flexDirection: "column", zIndex: 20, overflowY: "auto", display: "none",
+      }}>
+        {/* Logo */}
+        <div style={{ padding: "20px 16px 16px", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: C.accentDim, border: `2px solid ${C.accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900, color: C.accent, flexShrink: 0 }}>{userData.inicial}</div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: C.text }}>AJ Medical</div>
+              <div style={{ fontSize: 10, color: C.textDim }}>{userData.nombre} · {esAdmin ? "Admin" : "Operaciones"}</div>
             </div>
-            <button onClick={logout} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", color: C.textDim, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Salir</button>
-            <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.accentDim, border: `2px solid ${C.accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: C.accent }}>{userData.inicial}</div>
           </div>
         </div>
-
-        {/* Nav — solo tabs permitidas */}
-        <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 2, scrollbarWidth: "none" }}>
+        {/* Nav items */}
+        <div style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
           {tabsVisibles.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 10px",
+              display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
               background: activeTab?.id === t.id ? C.accentDim : "transparent",
-              border: activeTab?.id === t.id ? `1px solid ${C.accent}44` : "1px solid transparent",
-              borderRadius: 10, cursor: "pointer", color: activeTab?.id === t.id ? C.accent : C.textDim,
-              minWidth: 52, flexShrink: 0, fontFamily: "inherit", transition: "all .15s",
+              border: activeTab?.id === t.id ? `1px solid ${C.accent}33` : "1px solid transparent",
+              borderRadius: 8, cursor: "pointer", color: activeTab?.id === t.id ? C.accent : C.textDim,
+              fontFamily: "inherit", fontSize: 13, fontWeight: activeTab?.id === t.id ? 700 : 500,
+              textAlign: "left", width: "100%", transition: "all .12s",
             }}>
-              <Icon name={t.icon} size={16} />
-              <span style={{ fontSize: 9, fontWeight: 600, whiteSpace: "nowrap" }}>{t.label}</span>
+              <Icon name={t.icon} size={16} />{t.label}
             </button>
           ))}
         </div>
+        {/* Logout */}
+        <div style={{ padding: "12px 16px", borderTop: `1px solid ${C.border}` }}>
+          <button onClick={logout} style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", color: C.textDim, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
+            Cerrar sesión
+          </button>
+        </div>
       </div>
 
-      {/* Content — con guard de rol */}
-      <div style={{ padding: 16, paddingBottom: 32 }}>
-        {/* Guard: si el tab activo no está en tabsPermitidas, mostrar acceso denegado */}
-        {tabsPermitidas && !tabsPermitidas.includes(activeTab?.id) ? (
-          <div style={{ textAlign: "center", padding: 40 }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Acceso restringido</div>
-            <div style={{ fontSize: 13, color: C.textDim, marginTop: 6 }}>No tienes permiso para ver esta sección.</div>
+      {/* ── CONTENIDO PRINCIPAL ── */}
+      <div className="ajm-content" style={{ minHeight: "100vh" }}>
+
+        {/* TOP NAV — solo mobile */}
+        <div className="ajm-topnav" style={{
+          flexDirection: "column", position: "sticky", top: 0,
+          background: C.bg, zIndex: 10, borderBottom: `1px solid ${C.border}`,
+          padding: "12px 16px 0", display: "none",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>AJ Medical</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{activeTab?.label}</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.text }}>{userData.nombre}</div>
+                <div style={{ fontSize: 9, color: C.textDim }}>{esAdmin ? "Admin" : "Operaciones"}</div>
+              </div>
+              <button onClick={logout} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", color: C.textDim, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Salir</button>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.accentDim, border: `2px solid ${C.accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: C.accent }}>{userData.inicial}</div>
+            </div>
           </div>
-        ) : (<>
-        {activeTab?.id === "home" && <Dashboard ventas={ventas} compras={compras} gastos={gastos} cobros={cobros} inventario={inventario} settings={settings} />}
-        {activeTab?.id === "highlights" && esAdmin && <Highlights ventas={ventas} compras={compras} gastos={gastos} clientes={clientes} inventario={inventario} settings={settings} />}
-        {activeTab?.id === "ventas" && <Ventas data={ventas} setData={setVentas} clientes={clientes} inventario={inventario} setInventario={setInventario} cobros={cobros} setCobros={setCobros} />}
-        {activeTab?.id === "compras" && <Compras data={compras} setData={setCompras} inventario={inventario} setInventario={setInventario} proveedores={proveedores} />}
-        {activeTab?.id === "gastos" && <Gastos data={gastos} setData={setGastos} />}
-        {activeTab?.id === "clientes" && <Clientes data={clientes} setData={setClientes} ventas={ventas} />}
-        {activeTab?.id === "proveedores" && esAdmin && <Proveedores data={proveedores} setData={setProveedores} compras={compras} inventario={inventario} />}
-        {activeTab?.id === "inventario" && <Inventario data={inventario} setData={setInventario} ventas={ventas} />}
-        {activeTab?.id === "cobros" && <Cobros data={cobros} setData={setCobros} ventas={ventas} setVentas={setVentas} />}
-        {activeTab?.id === "hospital" && esAdmin && <CanalHospitalario data={cotizaciones} setData={setCotizaciones} clientes={clientes} inventario={inventario} setInventario={setInventario} ventas={ventas} setVentas={setVentas} cobros={cobros} setCobros={setCobros} />}
-        {activeTab?.id === "calendario" && <Calendario ventas={ventas} compras={compras} gastos={gastos} cobros={cobros} inventario={inventario} cotizaciones={cotizaciones} />}
-        {activeTab?.id === "reportes" && esAdmin && <Reportes ventas={ventas} compras={compras} gastos={gastos} clientes={clientes} cobros={cobros} inventario={inventario} />}
-        {activeTab?.id === "chat" && esAdmin && <ChatClaude ventas={ventas} compras={compras} gastos={gastos} clientes={clientes} inventario={inventario} cobros={cobros} />}
-        {activeTab?.id === "config" && esAdmin && <Configuracion settings={settings} setSettings={setSettings} />}
-        </>)}
+          <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 10, scrollbarWidth: "none" }}>
+            {tabsVisibles.map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)} style={{
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 10px",
+                background: activeTab?.id === t.id ? C.accentDim : "transparent",
+                border: activeTab?.id === t.id ? `1px solid ${C.accent}44` : "1px solid transparent",
+                borderRadius: 10, cursor: "pointer", color: activeTab?.id === t.id ? C.accent : C.textDim,
+                minWidth: 50, flexShrink: 0, fontFamily: "inherit", transition: "all .15s",
+              }}>
+                <Icon name={t.icon} size={15} />
+                <span style={{ fontSize: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── PAGE CONTENT ── */}
+        <div className="ajm-main" style={{ padding: 16, paddingBottom: 32 }}>
+          {tabsPermitidas && !tabsPermitidas.includes(activeTab?.id) ? (
+            <div style={{ textAlign: "center", padding: 40 }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Acceso restringido</div>
+              <div style={{ fontSize: 13, color: C.textDim, marginTop: 6 }}>No tienes permiso para ver esta sección.</div>
+            </div>
+          ) : (<>
+            {activeTab?.id === "home"       && <Dashboard ventas={ventas} compras={compras} gastos={gastos} cobros={cobros} inventario={inventario} settings={settings} />}
+            {activeTab?.id === "highlights" && esAdmin && <Highlights ventas={ventas} compras={compras} gastos={gastos} clientes={clientes} inventario={inventario} settings={settings} />}
+            {activeTab?.id === "ventas"     && <Ventas data={ventas} setData={setVentas} clientes={clientes} inventario={inventario} setInventario={setInventario} cobros={cobros} setCobros={setCobros} />}
+            {activeTab?.id === "compras"    && <Compras data={compras} setData={setCompras} inventario={inventario} setInventario={setInventario} proveedores={proveedores} />}
+            {activeTab?.id === "gastos"     && <Gastos data={gastos} setData={setGastos} />}
+            {activeTab?.id === "clientes"   && <Clientes data={clientes} setData={setClientes} ventas={ventas} />}
+            {activeTab?.id === "proveedores"&& esAdmin && <Proveedores data={proveedores} setData={setProveedores} compras={compras} inventario={inventario} />}
+            {activeTab?.id === "inventario" && <Inventario data={inventario} setData={setInventario} ventas={ventas} />}
+            {activeTab?.id === "cobros"     && <Cobros data={cobros} setData={setCobros} ventas={ventas} setVentas={setVentas} />}
+            {activeTab?.id === "hospital"   && esAdmin && <CanalHospitalario data={cotizaciones} setData={setCotizaciones} clientes={clientes} inventario={inventario} setInventario={setInventario} ventas={ventas} setVentas={setVentas} cobros={cobros} setCobros={setCobros} />}
+            {activeTab?.id === "calendario" && <Calendario ventas={ventas} compras={compras} gastos={gastos} cobros={cobros} inventario={inventario} cotizaciones={cotizaciones} />}
+            {activeTab?.id === "reportes"   && esAdmin && <Reportes ventas={ventas} compras={compras} gastos={gastos} clientes={clientes} cobros={cobros} inventario={inventario} />}
+            {activeTab?.id === "chat"       && esAdmin && <ChatClaude ventas={ventas} compras={compras} gastos={gastos} clientes={clientes} inventario={inventario} cobros={cobros} />}
+            {activeTab?.id === "config"     && esAdmin && <Configuracion settings={settings} setSettings={setSettings} />}
+          </>)}
+        </div>
       </div>
     </div>
   );
