@@ -1684,13 +1684,18 @@ function Cobros({ data, setData, ventas, setVentas }) {
         <details>
           <summary style={{ fontSize: 12, color: C.textDim, cursor: "pointer", marginBottom: 8, userSelect: "none" }}>{pagados.length} cobro(s) realizados</summary>
           {pagados.map(c => (
-            <Card key={c.id} style={{ padding: "10px 14px", marginBottom: 6, opacity: 0.6 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div>
-                  <span style={{ fontSize: 13, color: C.text }}>{c.cliente}</span>
+            <Card key={c.id} style={{ padding: "10px 14px", marginBottom: 6, opacity: 0.75 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 13, color: C.text, fontWeight: 600 }}>{c.cliente}</span>
                   <div style={{ fontSize: 11, color: C.textDim }}>{c.concepto} · Cobrado {fDate(c.fechaPago)}</div>
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>{fMXN(c.monto)}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.green }}>{fMXN(c.monto)}</span>
+                  <button onClick={() => setDelTargetCo(c)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, padding: 2 }}>
+                    <Icon name="trash" size={13} />
+                  </button>
+                </div>
               </div>
             </Card>
           ))}
@@ -2312,9 +2317,12 @@ Dame exactamente 5 recomendaciones concretas y accionables para esta semana. Cad
 // ============================================================
 // CONFIGURACION
 // ============================================================
-function Configuracion({ settings, setSettings }) {
+function Configuracion({ settings, setSettings, onReset }) {
   const [form, setForm] = useState({ ...settings });
   const [saved, setSaved] = useState(false);
+  const [resetStep, setResetStep] = useState(0);
+  const [resetPin, setResetPin] = useState("");
+  const [resetError, setResetError] = useState("");
   const f = k => v => setForm(p => ({ ...p, [k]: v }));
 
   const handleSave = async () => {
@@ -2322,6 +2330,16 @@ function Configuracion({ settings, setSettings }) {
     await saveSettings(form);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleReset = async () => {
+    if (resetPin !== DELETE_CODE) { setResetError("Código incorrecto."); setResetPin(""); return; }
+    // Borrar todos los datos de Supabase
+    const keys = Object.values(KEYS);
+    await Promise.all(keys.map(k => saveData(k, [])));
+    await saveData("ajm:calendario", []);
+    setResetStep(0); setResetPin("");
+    if (onReset) onReset();
   };
 
   return (
@@ -2336,7 +2354,7 @@ function Configuracion({ settings, setSettings }) {
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
           <Input label="Saldo inicial en caja (MXN)" type="number" value={String(form.saldoInicial||0)} onChange={f("saldoInicial")}
             placeholder="¿Cuánto tenías cuando arrancaste el sistema?" />
-          <div style={{ fontSize:11, color:C.textDim }}>Este es el punto de partida para calcular tu saldo acumulado. Ponlo en cero si no sabes o si empiezas desde hoy.</div>
+          <div style={{ fontSize:11, color:C.textDim }}>Este es el punto de partida para calcular tu saldo acumulado.</div>
         </div>
       </Card>
 
@@ -2345,13 +2363,51 @@ function Configuracion({ settings, setSettings }) {
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
           <Input label="Meta de ventas mensual (MXN)" type="number" value={String(form.metaMensual||3000000)} onChange={f("metaMensual")}
             placeholder="3000000" />
-          <div style={{ fontSize:11, color:C.textDim }}>Esta meta aparece en el Dashboard y en el semáforo de Highlights. Actualízala conforme crezca tu negocio.</div>
+          <div style={{ fontSize:11, color:C.textDim }}>Esta meta aparece en el Dashboard y en el semáforo de Highlights.</div>
         </div>
       </Card>
 
       <Btn onClick={handleSave} style={{ alignSelf:"flex-start" }}>
         {saved ? "✓ Guardado" : "Guardar configuración"}
       </Btn>
+
+      {/* ── Reset del sistema ── */}
+      <Card style={{ borderColor: C.red + "44", marginTop: 8 }}>
+        <div style={{ fontSize:11, color:C.red, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>⚠️ Zona de peligro</div>
+        {resetStep === 0 && (
+          <>
+            <div style={{ fontSize:13, color:C.textMid, marginBottom:12 }}>
+              Borra <strong style={{color:C.text}}>todos los datos</strong> del sistema — ventas, compras, gastos, clientes, inventario, cobros, cotizaciones y calendario. Esta acción no se puede deshacer.
+            </div>
+            <Btn variant="danger" onClick={() => setResetStep(1)}>Resetear sistema a ceros</Btn>
+          </>
+        )}
+        {resetStep === 1 && (
+          <>
+            <div style={{ fontSize:13, color:C.red, fontWeight:700, marginBottom:12 }}>¿Estás seguro? Se borrarán TODOS los datos permanentemente.</div>
+            <div style={{ display:"flex", gap:10 }}>
+              <Btn variant="ghost" onClick={() => setResetStep(0)} style={{flex:1}}>Cancelar</Btn>
+              <Btn variant="danger" onClick={() => setResetStep(2)} style={{flex:1}}>Sí, continuar</Btn>
+            </div>
+          </>
+        )}
+        {resetStep === 2 && (
+          <>
+            <div style={{ fontSize:13, color:C.textMid, marginBottom:10 }}>Ingresa el código de autorización para confirmar:</div>
+            <input type="password" inputMode="numeric" maxLength={4} value={resetPin} autoFocus
+              onChange={e => { setResetPin(e.target.value); setResetError(""); }}
+              onKeyDown={e => e.key === "Enter" && handleReset()}
+              placeholder="• • • •"
+              style={{ width:"100%", background:C.bg, border:`2px solid ${resetError ? C.red : C.border}`, borderRadius:10, padding:"14px", color:C.text, fontSize:24, fontFamily:"inherit", outline:"none", textAlign:"center", letterSpacing:12, marginBottom:8, boxSizing:"border-box" }}
+            />
+            {resetError && <div style={{ fontSize:12, color:C.red, marginBottom:8 }}>{resetError}</div>}
+            <div style={{ display:"flex", gap:10 }}>
+              <Btn variant="ghost" onClick={() => { setResetStep(0); setResetPin(""); }} style={{flex:1}}>Cancelar</Btn>
+              <Btn variant="danger" onClick={handleReset} style={{flex:1}}>Borrar todo</Btn>
+            </div>
+          </>
+        )}
+      </Card>
     </div>
   );
 }
@@ -3618,7 +3674,7 @@ export default function App() {
             {activeTab?.id === "calendario" && <Calendario ventas={ventas} compras={compras} gastos={gastos} cobros={cobros} inventario={inventario} cotizaciones={cotizaciones} />}
             {activeTab?.id === "reportes"   && esAdmin && <Reportes ventas={ventas} compras={compras} gastos={gastos} clientes={clientes} cobros={cobros} inventario={inventario} />}
             {activeTab?.id === "chat"       && esAdmin && <ChatClaude ventas={ventas} compras={compras} gastos={gastos} clientes={clientes} inventario={inventario} cobros={cobros} />}
-            {activeTab?.id === "config"     && esAdmin && <Configuracion settings={settings} setSettings={setSettings} />}
+            {activeTab?.id === "config"     && esAdmin && <Configuracion settings={settings} setSettings={setSettings} onReset={() => { setVentas([]); setCompras([]); setGastos([]); setClientes([]); setInventario([]); setCobros([]); setProveedores([]); setCotizaciones([]); }} />}
           </>)}
         </div>
       </div>
