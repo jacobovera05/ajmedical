@@ -1388,8 +1388,14 @@ function Inventario({ data, setData, ventas }) {
   const [expandedLotes, setExpandedLotes] = useState({});
   const f = (k) => (v) => setForm(p => ({ ...p, [k]: v }));
 
-  // Valor total del inventario
-  const valorTotal = data.reduce((a, i) => a + Number(i.stock || 0) * Number(i.costoUnitario || 0), 0);
+  // ── KPIs del inventario ──────────────────────────────────
+  const totalCodigos     = data.length;
+  const codigosConStock  = data.filter(i => Number(i.stock) > 0).length;
+  const codigosSinStock  = data.filter(i => Number(i.stock) === 0).length;
+  const totalPiezas      = data.reduce((a, i) => a + Number(i.stock || 0), 0);
+  const valorCosto       = data.reduce((a, i) => a + Number(i.stock || 0) * Number(i.costoUnitario || 0), 0);
+  const valorVenta       = data.reduce((a, i) => a + Number(i.stock || 0) * Number(i.precioVenta || 0), 0);
+  const margenInventario = valorCosto > 0 ? ((valorVenta - valorCosto) / valorVenta * 100) : 0;
 
   // Alertas de caducidad próxima (30 días)
   const hoy = new Date();
@@ -1469,16 +1475,93 @@ function Inventario({ data, setData, ventas }) {
         <Btn onClick={() => setModal(true)}><Icon name="plus" size={14} /> Agregar</Btn>
       </div>
 
-      {/* Valor total */}
-      <Card style={{ background: "#0d1a2b", border: `1px solid ${C.blue}44` }}>
-        <div style={{ fontSize: 11, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>💰 Valor total del inventario</div>
-        <div style={{ fontSize: 24, fontWeight: 900, color: C.blue }}>{fMXN(valorTotal)}</div>
-        <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>
-          {data.filter(i => Number(i.stock) > 0).length} productos con stock · {data.filter(i => Number(i.stock) === 0).length} sin stock
-        </div>
-      </Card>
+      {/* ── Dashboard de inventario ── */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Card style={{ flex: 1, minWidth: 130, background: "#0d1526", border: `1px solid ${C.blue}44` }}>
+          <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>📦 Códigos</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: C.blue }}>{totalCodigos}</div>
+          <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>{codigosConStock} con stock · {codigosSinStock} en cero</div>
+        </Card>
+        <Card style={{ flex: 1, minWidth: 130, background: "#0d1526", border: `1px solid ${C.accent}44` }}>
+          <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🔢 Piezas totales</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: C.accent }}>{totalPiezas}</div>
+          <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>unidades en stock</div>
+        </Card>
+      </div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Card style={{ flex: 1, minWidth: 130, background: "#0d2218", border: `1px solid ${C.green}44` }}>
+          <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>💰 Valor a costo</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: C.green }}>{fMXN(valorCosto)}</div>
+          <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>Lo que invertiste</div>
+        </Card>
+        <Card style={{ flex: 1, minWidth: 130, background: "#1a1a2e", border: `1px solid ${C.yellow}44` }}>
+          <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🏷️ Valor a venta est.</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: C.yellow }}>{fMXN(valorVenta)}</div>
+          <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>Si lo liquidaras hoy · margen ~{margenInventario.toFixed(0)}%</div>
+        </Card>
+      </div>
 
-      {/* Alertas de caducidad */}
+      {/* ── Lista de recompra ── */}
+      {(() => {
+        const enReorden = data.filter(i =>
+          i.puntoReorden && Number(i.puntoReorden) > 0 &&
+          Number(i.stock) <= Number(i.puntoReorden)
+        ).sort((a, b) => Number(a.stock) - Number(b.stock));
+        if (enReorden.length === 0) return null;
+        return (
+          <Card style={{ border: `1px solid ${C.red}44` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                🛒 Recompra urgente — {enReorden.length} producto(s)
+              </div>
+              <div style={{ fontSize: 11, color: C.textDim }}>
+                Stock ≤ punto de reorden
+              </div>
+            </div>
+            {enReorden.map((item, i) => {
+              const critico = Number(item.stock) === 0;
+              const faltante = Number(item.puntoReorden) - Number(item.stock);
+              return (
+                <div key={item.id} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "8px 0", borderBottom: i < enReorden.length - 1 ? `1px solid ${C.border}` : "none"
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{item.nombre}</span>
+                      {critico
+                        ? <Tag color={C.red}>SIN STOCK</Tag>
+                        : <Tag color={C.orange}>BAJO</Tag>
+                      }
+                    </div>
+                    <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>
+                      {item.sku && <span style={{ fontFamily: "monospace", marginRight: 8 }}>{item.sku}</span>}
+                      Stock: <strong style={{ color: critico ? C.red : C.orange }}>{item.stock}</strong>
+                      {" · "}Reorden: {item.puntoReorden}
+                      {" · "}Pedir mínimo: <strong style={{ color: C.accent }}>{faltante + Number(item.puntoReorden)}</strong> uds
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", marginLeft: 12 }}>
+                    <div style={{ fontSize: 11, color: C.textDim }}>Costo est.</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.blue }}>
+                      {fMXN((faltante + Number(item.puntoReorden)) * Number(item.costoUnitario || 0))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, color: C.textDim }}>Inversión total estimada para reponer</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: C.blue }}>
+                {fMXN(enReorden.reduce((a, i) => {
+                  const falt = (Number(i.puntoReorden) - Number(i.stock)) + Number(i.puntoReorden);
+                  return a + falt * Number(i.costoUnitario || 0);
+                }, 0))}
+              </span>
+            </div>
+          </Card>
+        );
+      })()}
       {lotesVencidos.length > 0 && (
         <div style={{ background: C.red + "18", border: `1px solid ${C.red}44`, borderRadius: 10, padding: "10px 14px" }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.red, marginBottom: 6 }}>🚨 Lotes VENCIDOS ({lotesVencidos.length})</div>
