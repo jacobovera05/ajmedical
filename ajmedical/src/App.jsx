@@ -54,6 +54,7 @@ const KEYS = {
   cobros:       "ajm:cobros",
   proveedores:  "ajm:proveedores",
   cotizaciones: "ajm:cotizaciones",
+  otrosIngresos: "ajm:otrosIngresos",
 };
 
 // ============================================================
@@ -309,33 +310,36 @@ function EditModal({ title, onClose, onSave, children }) {
 // ============================================================
 // DASHBOARD
 // ============================================================
-function Dashboard({ ventas, compras, gastos, cobros, inventario, settings }) {
+function Dashboard({ ventas, compras, gastos, cobros, inventario, settings, otrosIngresos }) {
   const mesActual = new Date().toISOString().slice(0, 7);
   const ventasMes = ventas.filter(v => v.fecha?.startsWith(mesActual));
   const comprasMes = compras.filter(c => c.fecha?.startsWith(mesActual));
   const gastosMes = gastos.filter(g => g.fecha?.startsWith(mesActual));
 
-  const totalVentas = ventasMes.reduce((a, v) => a + Number(v.total || 0), 0);
-  const totalCompras = comprasMes.reduce((a, c) => a + Number(c.total || 0), 0);
-  const totalGastos = gastosMes.reduce((a, g) => a + Number(g.monto || 0), 0);
-  const utilidad = totalVentas - totalCompras - totalGastos;
+  const totalVentasMes = ventasMes.reduce((a, v) => a + Number(v.total || 0), 0);
+  const totalComprasMes = comprasMes.reduce((a, c) => a + Number(c.total || 0), 0);
+  const totalGastosMes = gastosMes.reduce((a, g) => a + Number(g.monto || 0), 0);
   const metaMensual = Number(settings?.metaMensual || 3000000);
-  const progMeta = Math.min(100, (totalVentas / metaMensual) * 100);
+  const progMeta = Math.min(100, (totalVentasMes / metaMensual) * 100);
 
-  // ── Flujo de efectivo HISTÓRICO acumulado ──────────────────
-  const ingresosCobradosHist = ventas
-    .filter(v => v.pagado === true || v.formaPago === "contado")
-    .reduce((a, v) => a + Number(v.total || 0), 0);
-  const cobrosRecibidosHist = cobros.filter(c => c.pagado).reduce((a, c) => a + Number(c.monto || 0), 0);
-  const totalIngresosHist = ingresosCobradosHist + cobrosRecibidosHist;
-  const totalEgresosHist = compras.reduce((a, c) => a + Number(c.total || 0), 0) + gastos.reduce((a, g) => a + Number(g.monto || 0), 0);
-  const saldoCajaHist = Number(settings?.saldoInicial || 0) + totalIngresosHist - totalEgresosHist;
+  // ── UTILIDAD BRUTA DEL MES = ventas mes - costo de ventas mes ──
+  const utilidadBrutaMes = ventasMes.reduce((a, v) => {
+    const util = Number(v.utilidad || 0) || (Number(v.total || 0) - Number(v.cantidad || 0) * Number(v.costo || 0));
+    return a + util;
+  }, 0);
 
-  // ── Flujo de efectivo MES ACTUAL ──────────────────
-  const ingresosMes = ventasMes.filter(v => v.pagado === true || v.formaPago === "contado").reduce((a, v) => a + Number(v.total || 0), 0)
-    + cobros.filter(c => c.pagado && c.fechaPago?.startsWith(mesActual)).reduce((a, c) => a + Number(c.monto || 0), 0);
-  const egresosMes = totalCompras + totalGastos;
-  const saldoMes = ingresosMes - egresosMes;
+  // ── UTILIDAD BRUTA HISTÓRICA ACUMULADA ──
+  const utilidadBrutaHist = ventas.reduce((a, v) => {
+    const util = Number(v.utilidad || 0) || (Number(v.total || 0) - Number(v.cantidad || 0) * Number(v.costo || 0));
+    return a + util;
+  }, 0);
+
+  // ── SALDO EN BANCOS = ventas totales + otros ingresos - compras totales - gastos totales ──
+  const totalVentasHist = ventas.reduce((a, v) => a + Number(v.total || 0), 0);
+  const totalComprasHist = compras.reduce((a, c) => a + Number(c.total || 0), 0);
+  const totalGastosHist = gastos.reduce((a, g) => a + Number(g.monto || 0), 0);
+  const totalOtrosIngresos = (otrosIngresos || []).reduce((a, o) => a + Number(o.monto || 0), 0);
+  const saldoBancos = totalVentasHist + totalOtrosIngresos - totalComprasHist - totalGastosHist;
 
   // Pendiente por cobrar
   const porCobrar = cobros.filter(c => !c.pagado).reduce((a, c) => a + Number(c.monto || 0), 0)
@@ -355,31 +359,53 @@ function Dashboard({ ventas, compras, gastos, cobros, inventario, settings }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* ── Caja Mes + Histórico ── */}
+      {/* ── Utilidad mes + Utilidad acumulada ── */}
       <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-        <Card style={{ flex:1, minWidth:140, background: saldoMes >= 0 ? "#0d2218" : "#2b0d10", border:`1px solid ${saldoMes >= 0 ? C.green+"55" : C.red+"55"}` }}>
-          <div style={{ fontSize:10, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>💵 Flujo del mes</div>
-          <div style={{ fontSize:26, fontWeight:900, color: saldoMes >= 0 ? C.green : C.red, letterSpacing:-1 }}>{fMXN(saldoMes)}</div>
-          <div style={{ fontSize:11, color:C.textDim, marginTop:6 }}>↑ {fMXN(ingresosMes)} · ↓ {fMXN(egresosMes)}</div>
+        <Card style={{ flex:1, minWidth:140, background:"#0d2218", border:`1px solid ${C.green}55` }}>
+          <div style={{ fontSize:10, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>📈 Utilidad bruta del mes</div>
+          <div style={{ fontSize:26, fontWeight:900, color:C.green, letterSpacing:-1 }}>{fMXN(utilidadBrutaMes)}</div>
+          <div style={{ fontSize:11, color:C.textDim, marginTop:6 }}>Ventas: {fMXN(totalVentasMes)}</div>
         </Card>
         <Card style={{ flex:1, minWidth:140, background:"#0d1a2b", border:`1px solid ${C.blue}44` }}>
-          <div style={{ fontSize:10, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>🏦 Saldo acumulado</div>
-          <div style={{ fontSize:26, fontWeight:900, color: saldoCajaHist >= 0 ? C.blue : C.red, letterSpacing:-1 }}>{fMXN(saldoCajaHist)}</div>
+          <div style={{ fontSize:10, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>💰 Utilidad acumulada</div>
+          <div style={{ fontSize:26, fontWeight:900, color:C.blue, letterSpacing:-1 }}>{fMXN(utilidadBrutaHist)}</div>
           <div style={{ fontSize:11, color:C.textDim, marginTop:6 }}>Histórico total</div>
         </Card>
       </div>
+
+      {/* ── Saldo en bancos ── */}
+      <Card style={{ background:"#1a1a2e", border:`1px solid ${C.accent}33` }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+          <div>
+            <div style={{ fontSize:10, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>🏦 Saldo en bancos</div>
+            <div style={{ fontSize:26, fontWeight:900, color:C.accent, letterSpacing:-1 }}>{fMXN(saldoBancos)}</div>
+          </div>
+          <div style={{ textAlign:"right", fontSize:11, color:C.textDim }}>
+            <div>Ventas: <span style={{color:C.green}}>{fMXN(totalVentasHist)}</span></div>
+            {totalOtrosIngresos > 0 && <div>Otros ing.: <span style={{color:C.blue}}>+{fMXN(totalOtrosIngresos)}</span></div>}
+            <div>Compras: <span style={{color:C.red}}>−{fMXN(totalComprasHist)}</span></div>
+            <div>Gastos: <span style={{color:C.orange}}>−{fMXN(totalGastosHist)}</span></div>
+          </div>
+        </div>
+        <div style={{ height:8, background:C.bg, borderRadius:4, overflow:"hidden" }}>
+          <div style={{ height:"100%", width:`${Math.min(100, (saldoBancos / (totalVentasHist + totalOtrosIngresos)) * 100)}%`, background: saldoBancos > 0 ? C.accent : C.red, borderRadius:4, transition:"width .5s" }} />
+        </div>
+        <div style={{ fontSize:11, color:C.textDim, marginTop:6 }}>
+          {((saldoBancos / (totalVentasHist + totalOtrosIngresos || 1)) * 100).toFixed(1)}% del total facturado disponible en caja
+        </div>
+        {porCobrar > 0 && <div style={{ marginTop:8, paddingTop:8, borderTop:`1px solid ${C.border}`, fontSize:12, color:C.yellow }}>📋 Por cobrar: <strong>{fMXN(porCobrar)}</strong></div>}
+      </Card>
 
       {/* ── Meta mensual ── */}
       <Card>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
           <div style={{ fontSize:11, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>🎯 Meta mensual</div>
-          <div style={{ fontSize:12, color:C.accent, fontWeight:700 }}>{fMXN(totalVentas)} / {fMXN(metaMensual)}</div>
+          <div style={{ fontSize:12, color:C.accent, fontWeight:700 }}>{fMXN(totalVentasMes)} / {fMXN(metaMensual)}</div>
         </div>
         <div style={{ height:10, background:C.bg, borderRadius:5, overflow:"hidden" }}>
           <div style={{ height:"100%", width:`${progMeta}%`, background: progMeta >= 100 ? C.green : progMeta >= 70 ? C.accent : progMeta >= 40 ? C.yellow : C.red, borderRadius:5, transition:"width .5s" }} />
         </div>
         <div style={{ fontSize:11, color:C.textDim, marginTop:6 }}>{progMeta.toFixed(0)}% alcanzado {progMeta >= 100 ? "✓ META CUMPLIDA 🎉" : ""}</div>
-        {porCobrar > 0 && <div style={{ marginTop:8, paddingTop:8, borderTop:`1px solid ${C.border}`, fontSize:12, color:C.yellow }}>📋 Por cobrar: <strong>{fMXN(porCobrar)}</strong></div>}
       </Card>
 
       {/* Alerts */}
@@ -400,22 +426,22 @@ function Dashboard({ ventas, compras, gastos, cobros, inventario, settings }) {
 
       {/* KPIs del mes */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <StatCard label="Ventas mes" value={fMXN(totalVentas)} icon="sales" color={C.accent} />
-        <StatCard label="Utilidad mes" value={fMXN(utilidad)} icon="trend" color={utilidad >= 0 ? C.green : C.red} />
+        <StatCard label="Ventas mes" value={fMXN(totalVentasMes)} icon="sales" color={C.accent} />
+        <StatCard label="Utilidad bruta" value={fMXN(utilidadBrutaMes)} icon="trend" color={C.green} />
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <StatCard label="Compras mes" value={fMXN(totalCompras)} icon="purchase" color={C.blue} />
-        <StatCard label="Gastos mes" value={fMXN(totalGastos)} icon="expense" color={C.orange} />
+        <StatCard label="Compras mes" value={fMXN(totalComprasMes)} icon="purchase" color={C.blue} />
+        <StatCard label="Gastos mes" value={fMXN(totalGastosMes)} icon="expense" color={C.orange} />
       </div>
 
       {/* Margen */}
-      {totalVentas > 0 && (
+      {totalVentasMes > 0 && (
         <Card>
           <div style={{ fontSize: 11, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Margen bruto del mes</div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: 28, fontWeight: 800, color: C.green }}>{((utilidad / totalVentas) * 100).toFixed(1)}%</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: C.green }}>{((utilidadBrutaMes / totalVentasMes) * 100).toFixed(1)}%</div>
             <div style={{ flex: 1, height: 8, background: C.bg, borderRadius: 4, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${Math.min(100, Math.max(0, (utilidad / totalVentas) * 100))}%`, background: C.green, borderRadius: 4, transition: "width .5s" }} />
+              <div style={{ height: "100%", width: `${Math.min(100, Math.max(0, (utilidadBrutaMes / totalVentasMes) * 100))}%`, background: C.green, borderRadius: 4, transition: "width .5s" }} />
             </div>
           </div>
         </Card>
@@ -2413,6 +2439,129 @@ function Configuracion({ settings, setSettings, onReset }) {
 }
 
 // ============================================================
+// OTROS INGRESOS — Préstamos, aportaciones, depósitos externos
+// ============================================================
+const TIPOS_INGRESO = ["Préstamo bancario", "Aportación de socio", "Depósito externo", "Anticipo de cliente", "Otro"];
+
+function OtrosIngresos({ data, setData }) {
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({ fecha: today(), tipo: "Préstamo bancario", descripcion: "", monto: "", notas: "" });
+  const [delTarget, setDelTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
+  const f = k => v => setForm(p => ({ ...p, [k]: v }));
+
+  const save = async () => {
+    if (!form.descripcion || !form.monto) return;
+    const nuevo = [...data, { id: uid(), ...form }];
+    setData(nuevo); await saveData(KEYS.otrosIngresos, nuevo); setModal(false);
+    setForm({ fecha: today(), tipo: "Préstamo bancario", descripcion: "", monto: "", notas: "" });
+  };
+
+  const confirmDel = async () => {
+    const n = data.filter(x => x.id !== delTarget.id);
+    setData(n); await saveData(KEYS.otrosIngresos, n); setDelTarget(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editTarget) return;
+    const n = data.map(x => x.id === editTarget.id ? editTarget : x);
+    setData(n); await saveData(KEYS.otrosIngresos, n); setEditTarget(null);
+  };
+
+  const totalIngresos = data.reduce((a, o) => a + Number(o.monto || 0), 0);
+  const sorted = [...data].sort((a, b) => b.fecha?.localeCompare(a.fecha));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {delTarget && <DeleteConfirm item={`${delTarget.descripcion} — ${fMXN(delTarget.monto)}`} onConfirm={confirmDel} onCancel={() => setDelTarget(null)} />}
+      {editTarget && (
+        <Modal title="Editar ingreso" onClose={() => setEditTarget(null)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Input label="Fecha" type="date" value={editTarget.fecha} onChange={v => setEditTarget(p => ({ ...p, fecha: v }))} />
+              <Select label="Tipo" value={editTarget.tipo} onChange={v => setEditTarget(p => ({ ...p, tipo: v }))} options={TIPOS_INGRESO.map(t => ({ value: t, label: t }))} />
+            </div>
+            <Input label="Descripción" value={editTarget.descripcion} onChange={v => setEditTarget(p => ({ ...p, descripcion: v }))} />
+            <Input label="Monto MXN" type="number" value={editTarget.monto} onChange={v => setEditTarget(p => ({ ...p, monto: v }))} />
+            <Input label="Notas" value={editTarget.notas || ""} onChange={v => setEditTarget(p => ({ ...p, notas: v }))} />
+            <Btn onClick={saveEdit}>Guardar cambios</Btn>
+          </div>
+        </Modal>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text }}>Otros Ingresos</h2>
+          <div style={{ fontSize: 12, color: C.textDim }}>Préstamos y depósitos que no son ventas</div>
+        </div>
+        <Btn onClick={() => setModal(true)}><Icon name="plus" size={14} /> Agregar</Btn>
+      </div>
+
+      {/* Aviso explicativo */}
+      <Card style={{ background: C.blue + "18", border: `1px solid ${C.blue}44` }}>
+        <div style={{ fontSize: 12, color: C.blue, fontWeight: 600, marginBottom: 4 }}>ℹ️ ¿Cómo funciona este módulo?</div>
+        <div style={{ fontSize: 12, color: C.textMid, lineHeight: 1.5 }}>
+          Los ingresos aquí registrados <strong style={{ color: C.text }}>solo afectan el saldo en bancos</strong> del Dashboard. No cuentan como ventas, no modifican tu utilidad ni tus reportes de margen.
+        </div>
+      </Card>
+
+      {data.length > 0 && (
+        <Card style={{ background: "#0d1a2b", border: `1px solid ${C.blue}44` }}>
+          <div style={{ fontSize: 11, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Total otros ingresos registrados</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: C.blue }}>{fMXN(totalIngresos)}</div>
+          <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>{data.length} registro(s)</div>
+        </Card>
+      )}
+
+      {sorted.map(o => (
+        <Card key={o.id} style={{ padding: "12px 14px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 3 }}>{o.descripcion}</div>
+              <div style={{ fontSize: 11, color: C.textDim }}>
+                {fDate(o.fecha)} · <Tag color={C.blue}>{o.tipo}</Tag>
+              </div>
+              {o.notas && <div style={{ fontSize: 11, color: C.textDim, marginTop: 4, fontStyle: "italic" }}>{o.notas}</div>}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 12 }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: C.blue }}>{fMXN(o.monto)}</span>
+              <button onClick={() => setEditTarget(o)} style={{ background: C.blue + "22", border: `1px solid ${C.blue}44`, borderRadius: 6, cursor: "pointer", color: C.blue, padding: "3px 6px", fontSize: 11 }}>✎</button>
+              <button onClick={() => setDelTarget(o)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, padding: 2 }}><Icon name="trash" size={14} /></button>
+            </div>
+          </div>
+        </Card>
+      ))}
+
+      {data.length === 0 && (
+        <Card style={{ textAlign: "center", padding: 32 }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>🏦</div>
+          <div style={{ fontSize: 14, color: C.textDim }}>Sin ingresos externos registrados</div>
+          <div style={{ fontSize: 12, color: C.textDim, marginTop: 4 }}>Agrega préstamos, aportaciones o depósitos que no sean ventas</div>
+        </Card>
+      )}
+
+      {modal && (
+        <Modal title="Agregar ingreso externo" onClose={() => setModal(false)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ background: C.blue + "18", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.blue }}>
+              Este ingreso solo afectará el saldo en bancos, no tus ventas ni utilidad.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Input label="Fecha" type="date" value={form.fecha} onChange={f("fecha")} />
+              <Select label="Tipo" value={form.tipo} onChange={f("tipo")} options={TIPOS_INGRESO.map(t => ({ value: t, label: t }))} />
+            </div>
+            <Input label="Descripción *" value={form.descripcion} onChange={f("descripcion")} placeholder="Ej: Préstamo BBVA para inventario" required />
+            <Input label="Monto MXN *" type="number" value={form.monto} onChange={f("monto")} placeholder="0" required />
+            <Input label="Notas" value={form.notas} onChange={f("notas")} placeholder="Observaciones, banco, referencia..." />
+            <Btn onClick={save}>Guardar ingreso</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // CANAL HOSPITALARIO — Cotizaciones
 // ============================================================
 let folioCounter = 1000;
@@ -2905,7 +3054,7 @@ const USERS = {
     nombre: "Giovana",
     inicial: "G",
     rol: "operaciones",
-    tabsPermitidas: ["home", "ventas", "compras", "gastos", "clientes", "inventario", "cobros", "calendario"],
+    tabsPermitidas: ["home", "ventas", "compras", "gastos", "otrosingresos", "clientes", "inventario", "cobros", "calendario"],
   },
 };
 const SESSION_KEY = "ajm:session";
@@ -3491,6 +3640,7 @@ const TABS = [
   { id: "ventas", label: "Ventas", icon: "sales" },
   { id: "compras", label: "Compras", icon: "purchase" },
   { id: "gastos", label: "Gastos", icon: "expense" },
+  { id: "otrosingresos", label: "Ingresos+", icon: "cobros" },
   { id: "clientes", label: "Clientes", icon: "clients" },
   { id: "proveedores", label: "Proveedores", icon: "supplier" },
   { id: "inventario", label: "Inventario", icon: "inventory" },
@@ -3513,6 +3663,7 @@ export default function App() {
   const [cobros, setCobros] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [cotizaciones, setCotizaciones] = useState([]);
+  const [otrosIngresos, setOtrosIngresos] = useState([]);
   const [settings, setSettings] = useState({ saldoInicial: 0, metaMensual: 3000000 });
   const [loaded, setLoaded] = useState(false);
 
@@ -3520,10 +3671,10 @@ export default function App() {
     Promise.all([
       loadData(KEYS.ventas), loadData(KEYS.compras), loadData(KEYS.gastos),
       loadData(KEYS.clientes), loadData(KEYS.inventario), loadData(KEYS.cobros),
-      loadData(KEYS.proveedores), loadSettings(), loadData(KEYS.cotizaciones),
-    ]).then(([v, c, g, cl, i, co, pr, s, cot]) => {
+      loadData(KEYS.proveedores), loadSettings(), loadData(KEYS.cotizaciones), loadData(KEYS.otrosIngresos),
+    ]).then(([v, c, g, cl, i, co, pr, s, cot, oi]) => {
       setVentas(v); setCompras(c); setGastos(g); setClientes(cl); setInventario(i); setCobros(co); setProveedores(pr);
-      setSettings(s); setCotizaciones(cot);
+      setSettings(s); setCotizaciones(cot); setOtrosIngresos(oi);
       setLoaded(true);
     });
   }, []);
@@ -3661,11 +3812,12 @@ export default function App() {
               <div style={{ fontSize: 13, color: C.textDim, marginTop: 6 }}>No tienes permiso para ver esta sección.</div>
             </div>
           ) : (<>
-            {activeTab?.id === "home"       && <Dashboard ventas={ventas} compras={compras} gastos={gastos} cobros={cobros} inventario={inventario} settings={settings} />}
+            {activeTab?.id === "home"       && <Dashboard ventas={ventas} compras={compras} gastos={gastos} cobros={cobros} inventario={inventario} settings={settings} otrosIngresos={otrosIngresos} />}
             {activeTab?.id === "highlights" && esAdmin && <Highlights ventas={ventas} compras={compras} gastos={gastos} clientes={clientes} inventario={inventario} settings={settings} />}
             {activeTab?.id === "ventas"     && <Ventas data={ventas} setData={setVentas} clientes={clientes} inventario={inventario} setInventario={setInventario} cobros={cobros} setCobros={setCobros} />}
             {activeTab?.id === "compras"    && <Compras data={compras} setData={setCompras} inventario={inventario} setInventario={setInventario} proveedores={proveedores} />}
             {activeTab?.id === "gastos"     && <Gastos data={gastos} setData={setGastos} />}
+            {activeTab?.id === "otrosingresos" && <OtrosIngresos data={otrosIngresos} setData={setOtrosIngresos} />}
             {activeTab?.id === "clientes"   && <Clientes data={clientes} setData={setClientes} ventas={ventas} />}
             {activeTab?.id === "proveedores"&& esAdmin && <Proveedores data={proveedores} setData={setProveedores} compras={compras} inventario={inventario} />}
             {activeTab?.id === "inventario" && <Inventario data={inventario} setData={setInventario} ventas={ventas} />}
