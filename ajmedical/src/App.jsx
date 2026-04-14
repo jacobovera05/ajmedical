@@ -1,35 +1,60 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 // ============================================================
-// STORAGE HELPERS
+// SUPABASE CONFIG
 // ============================================================
-const KEYS = {
-  ventas: "ajm:ventas",
-  compras: "ajm:compras",
-  gastos: "ajm:gastos",
-  clientes: "ajm:clientes",
-  inventario: "ajm:inventario",
-  cobros: "ajm:cobros",
-  proveedores: "ajm:proveedores",
-  cotizaciones: "ajm:cotizaciones",
+const SUPABASE_URL = "https://rkqcujvkpvghwjxllgsy.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrcWN1anZrcHZnaHdqeGxsZ3N5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDMzNjcsImV4cCI6MjA5MTU3OTM2N30.sOdJ2JQdUD4nVdkhJmZI2a_6WseWSF2N3YwzepPORlw";
+
+const sbH = {
+  "Content-Type": "application/json",
+  "apikey": SUPABASE_KEY,
+  "Authorization": `Bearer ${SUPABASE_KEY}`,
+  "Prefer": "return=representation,resolution=merge-duplicates",
 };
 
+// Carga datos de la tabla ajm_store usando la key como id
 async function loadData(key) {
   try {
-    const r = await window.storage.get(key);
-    return r ? JSON.parse(r.value) : [];
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/ajm_store?id=eq.${encodeURIComponent(key)}&select=payload`,
+      { headers: sbH }
+    );
+    if (!res.ok) return [];
+    const rows = await res.json();
+    if (!rows || rows.length === 0) return [];
+    return JSON.parse(rows[0].payload) || [];
   } catch {
     return [];
   }
 }
 
+// Guarda datos en ajm_store usando upsert
 async function saveData(key, data) {
   try {
-    await window.storage.set(key, JSON.stringify(data));
+    await fetch(`${SUPABASE_URL}/rest/v1/ajm_store`, {
+      method: "POST",
+      headers: sbH,
+      body: JSON.stringify({ id: key, payload: JSON.stringify(data), updated_at: new Date().toISOString() }),
+    });
   } catch (e) {
-    console.error("Storage error", e);
+    console.error("Supabase error", e);
   }
 }
+
+// ============================================================
+// KEYS
+// ============================================================
+const KEYS = {
+  ventas:       "ajm:ventas",
+  compras:      "ajm:compras",
+  gastos:       "ajm:gastos",
+  clientes:     "ajm:clientes",
+  inventario:   "ajm:inventario",
+  cobros:       "ajm:cobros",
+  proveedores:  "ajm:proveedores",
+  cotizaciones: "ajm:cotizaciones",
+};
 
 // ============================================================
 // CLAUDE API
@@ -205,16 +230,32 @@ const Modal = ({ title, onClose, children }) => (
 // SECURITY — Delete with PIN + Settings
 // ============================================================
 const DELETE_CODE = "5829";
-const SETTINGS_KEY = "ajm:settings";
 
 async function loadSettings() {
   try {
-    const r = await window.storage.get(SETTINGS_KEY);
-    return r ? JSON.parse(r.value) : { saldoInicial: 0, metaMensual: 3000000 };
-  } catch { return { saldoInicial: 0, metaMensual: 3000000 }; }
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/ajm_store?id=eq.ajm:settings&select=payload`,
+      { headers: sbH }
+    );
+    if (!res.ok) return { saldoInicial: 0, metaMensual: 3000000, metaMargen: 40 };
+    const rows = await res.json();
+    if (!rows || rows.length === 0) return { saldoInicial: 0, metaMensual: 3000000, metaMargen: 40 };
+    return JSON.parse(rows[0].payload) || { saldoInicial: 0, metaMensual: 3000000, metaMargen: 40 };
+  } catch {
+    return { saldoInicial: 0, metaMensual: 3000000, metaMargen: 40 };
+  }
 }
+
 async function saveSettings(s) {
-  await window.storage.set(SETTINGS_KEY, JSON.stringify(s));
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/ajm_store`, {
+      method: "POST",
+      headers: sbH,
+      body: JSON.stringify({ id: "ajm:settings", payload: JSON.stringify(s), updated_at: new Date().toISOString() }),
+    });
+  } catch (e) {
+    console.error("Supabase settings error", e);
+  }
 }
 
 function DeleteConfirm({ item, onConfirm, onCancel }) {
