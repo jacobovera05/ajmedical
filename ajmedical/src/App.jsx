@@ -640,32 +640,152 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text }}>Ventas</h2>
-          <div style={{ fontSize: 12, color: C.textDim }}>{data.length} registros · {fMXN(data.reduce((a, v) => a + Number(v.total || 0), 0))} total</div>
+          <div style={{ fontSize: 12, color: C.textDim }}>{data.length} registros totales</div>
         </div>
         <Btn onClick={() => setModal(true)}><Icon name="plus" size={14} /> Registrar</Btn>
       </div>
 
-      {sorted.map(v => (
-        <Card key={v.id} style={{ padding: "12px 14px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{v.producto}</span>
-                <Tag>{v.cliente}</Tag>
-              </div>
-              <div style={{ fontSize: 12, color: C.textDim }}>{fDate(v.fecha)} · {v.cantidad} uds · {fMXN(v.precioUnitario)}/ud</div>
-              {v.costo > 0 && <div style={{ fontSize: 11, color: C.green, marginTop: 2 }}>Margen: {(((v.total - v.cantidad * v.costo) / v.total) * 100).toFixed(1)}% · Utilidad: {fMXN(v.utilidad)}</div>}
+      {/* ── Selector de período ── */}
+      {(() => {
+        const [periodo, setPeriodo] = useState("mes");
+        const [fechaIni, setFechaIni] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); });
+        const [fechaFin, setFechaFin] = useState(today());
+
+        const getFiltradas = () => {
+          if (periodo === "mes") {
+            const m = new Date().toISOString().slice(0,7);
+            return data.filter(v => v.fecha?.startsWith(m));
+          }
+          if (periodo === "anterior") {
+            const d = new Date(); d.setMonth(d.getMonth()-1);
+            const m = d.toISOString().slice(0,7);
+            return data.filter(v => v.fecha?.startsWith(m));
+          }
+          if (periodo === "3meses") {
+            const d = new Date(); d.setMonth(d.getMonth()-3);
+            return data.filter(v => v.fecha >= d.toISOString().slice(0,10));
+          }
+          if (periodo === "custom") return data.filter(v => v.fecha >= fechaIni && v.fecha <= fechaFin);
+          return data;
+        };
+        const filtradas = getFiltradas().sort((a,b) => b.fecha?.localeCompare(a.fecha));
+        const totalV = filtradas.reduce((a,v) => a + Number(v.total||0), 0);
+        const utilV  = filtradas.reduce((a,v) => a + Number(v.utilidad||0), 0);
+        const margenV = totalV > 0 ? (utilV/totalV*100) : 0;
+
+        const topClientes = Object.entries(
+          filtradas.reduce((acc,v) => { acc[v.cliente]=(acc[v.cliente]||0)+Number(v.total||0); return acc; }, {})
+        ).sort((a,b)=>b[1]-a[1]).slice(0,5);
+        const maxC = topClientes[0]?.[1]||1;
+
+        const topProductos = Object.entries(
+          filtradas.reduce((acc,v) => { acc[v.producto]=(acc[v.producto]||0)+Number(v.total||0); return acc; }, {})
+        ).sort((a,b)=>b[1]-a[1]).slice(0,5);
+        const maxP = topProductos[0]?.[1]||1;
+
+        return (<>
+          {/* Selector */}
+          <Card style={{ padding: "10px 14px" }}>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom: periodo==="custom"?10:0 }}>
+              {[["mes","Este mes"],["anterior","Mes anterior"],["3meses","Últimos 3 meses"],["todo","Todo"],["custom","Personalizado"]].map(([val,lbl]) => (
+                <button key={val} onClick={()=>setPeriodo(val)} style={{
+                  padding:"5px 12px", borderRadius:16, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit",
+                  background: periodo===val ? C.accent+"22" : "transparent",
+                  border:`1px solid ${periodo===val ? C.accent : C.border}`,
+                  color: periodo===val ? C.accent : C.textDim,
+                }}>{lbl}</button>
+              ))}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-              <span style={{ fontSize: 16, fontWeight: 800, color: C.accent }}>{fMXN(v.total)}</span>
-              <div style={{display:"flex",gap:4}}>
-                <button onClick={() => setEditTarget(v)} style={{ background:C.blue+"22", border:`1px solid ${C.blue}44`, borderRadius:6, cursor:"pointer", color:C.blue, padding:"3px 8px", fontSize:11, fontWeight:600 }}>✎ Editar</button>
-                <button onClick={() => setDelTarget(v)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, padding: 2 }}><Icon name="trash" size={14} /></button>
+            {periodo==="custom" && (
+              <div style={{ display:"flex", gap:10, marginTop:8 }}>
+                <Input label="Desde" type="date" value={fechaIni} onChange={setFechaIni} />
+                <Input label="Hasta" type="date" value={fechaFin} onChange={setFechaFin} />
               </div>
-            </div>
+            )}
+          </Card>
+
+          {/* KPIs */}
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            <StatCard label="Total vendido" value={fMXN(totalV)} color={C.accent} icon="sales" sub={`${filtradas.length} transacciones`} />
+            <StatCard label="Utilidad bruta" value={fMXN(utilV)} color={C.green} icon="trend" sub={`Margen ${margenV.toFixed(1)}%`} />
           </div>
-        </Card>
-      ))}
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            <StatCard label="Margen %" value={`${margenV.toFixed(1)}%`} color={margenV>=40?C.green:margenV>=20?C.yellow:C.red} sub="sobre ventas del período" />
+            <StatCard label="Transacciones" value={String(filtradas.length)} color={C.blue} sub={`${[...new Set(filtradas.map(v=>v.cliente))].length} clientes distintos`} />
+          </div>
+
+          {/* Top 5 clientes */}
+          {topClientes.length > 0 && (
+            <Card>
+              <div style={{ fontSize:11, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>Top 5 clientes</div>
+              {topClientes.map(([nombre,total],i) => (
+                <div key={nombre} style={{ marginBottom:8 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                      <div style={{ width:20, height:20, borderRadius:"50%", background:C.accentDim, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, color:C.accent }}>{i+1}</div>
+                      <span style={{ fontSize:12, color:C.text }}>{nombre||"—"}</span>
+                    </div>
+                    <span style={{ fontSize:12, fontWeight:700, color:C.accent }}>{fMXN(total)}</span>
+                  </div>
+                  <div style={{ height:4, background:C.bg, borderRadius:2, overflow:"hidden" }}>
+                    <div style={{ height:"100%", width:`${(total/maxC*100).toFixed(0)}%`, background:C.accent, borderRadius:2 }} />
+                  </div>
+                </div>
+              ))}
+            </Card>
+          )}
+
+          {/* Top 5 productos */}
+          {topProductos.length > 0 && (
+            <Card>
+              <div style={{ fontSize:11, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>Top 5 productos</div>
+              {topProductos.map(([nombre,total],i) => (
+                <div key={nombre} style={{ marginBottom:8 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                    <span style={{ fontSize:12, color:C.text }}>{nombre||"—"}</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:C.blue }}>{fMXN(total)}</span>
+                  </div>
+                  <div style={{ height:4, background:C.bg, borderRadius:2, overflow:"hidden" }}>
+                    <div style={{ height:"100%", width:`${(total/maxP*100).toFixed(0)}%`, background:C.blue, borderRadius:2 }} />
+                  </div>
+                </div>
+              ))}
+            </Card>
+          )}
+
+          {/* Lista filtrada */}
+          <div style={{ fontSize:11, color:C.textDim, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>
+            Transacciones del período ({filtradas.length})
+          </div>
+          {filtradas.map(v => (
+            <Card key={v.id} style={{ padding:"12px 14px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", marginBottom:4 }}>
+                    <span style={{ fontSize:14, fontWeight:700, color:C.text }}>{v.producto}</span>
+                    <Tag>{v.cliente}</Tag>
+                    {v.formaPago==="credito" && <Tag color={C.yellow}>Crédito</Tag>}
+                  </div>
+                  <div style={{ fontSize:12, color:C.textDim }}>{fDate(v.fecha)} · {v.cantidad} uds · {fMXN(v.precioUnitario)}/ud</div>
+                  {v.costo > 0 && <div style={{ fontSize:11, color:C.green, marginTop:2 }}>Margen: {(((v.total - v.cantidad*v.costo)/v.total)*100).toFixed(1)}% · Utilidad: {fMXN(v.utilidad)}</div>}
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6 }}>
+                  <span style={{ fontSize:16, fontWeight:800, color:C.accent }}>{fMXN(v.total)}</span>
+                  <div style={{ display:"flex", gap:4 }}>
+                    <button onClick={() => setEditTarget(v)} style={{ background:C.blue+"22", border:`1px solid ${C.blue}44`, borderRadius:6, cursor:"pointer", color:C.blue, padding:"3px 8px", fontSize:11, fontWeight:600 }}>✎ Editar</button>
+                    <button onClick={() => setDelTarget(v)} style={{ background:"none", border:"none", cursor:"pointer", color:C.textDim, padding:2 }}><Icon name="trash" size={14} /></button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+          {filtradas.length === 0 && (
+            <Card style={{ textAlign:"center", padding:24 }}>
+              <div style={{ fontSize:13, color:C.textDim }}>Sin ventas en este período</div>
+            </Card>
+          )}
+        </>);
+      })()}
 
       {modal && (
         <Modal title="Registrar venta" onClose={() => { setModal(false); setLineas([newLineVenta()]); }}>
@@ -930,35 +1050,120 @@ function Compras({ data, setData, inventario, setInventario, proveedores }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text }}>Compras</h2>
-          <div style={{ fontSize: 12, color: C.textDim }}>{data.length} registros</div>
+          <div style={{ fontSize: 12, color: C.textDim }}>{data.length} registros totales</div>
         </div>
         <Btn onClick={() => setModal(true)}><Icon name="plus" size={14} /> Registrar</Btn>
       </div>
 
-      {sorted.map(c => (
-        <Card key={c.id} style={{ padding: "12px 14px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 4 }}>{c.producto}</div>
-              <div style={{ fontSize: 12, color: C.textDim }}>{fDate(c.fecha)} · {c.cantidad} uds · {c.proveedor}</div>
-              <div style={{ fontSize: 11, color: C.blue, marginTop: 2 }}>${Number(c.totalUSD || 0).toFixed(0)} USD · TC {c.tipoCambio}</div>
-              {(c.lote || c.caducidad) && (
-                <div style={{ display: "flex", gap: 10, marginTop: 3 }}>
-                  {c.lote && <span style={{ fontSize: 11, color: C.textDim, fontFamily: "monospace" }}>Lote: {c.lote}</span>}
-                  {c.caducidad && <span style={{ fontSize: 11, color: new Date(c.caducidad) < new Date() ? C.red : C.textDim }}>Cad: {fDate(c.caducidad)}</span>}
-                </div>
-              )}
+      {/* ── Dashboard Compras ── */}
+      {(() => {
+        const [periodo, setPeriodo] = useState("mes");
+        const [fechaIni, setFechaIni] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); });
+        const [fechaFin, setFechaFin] = useState(today());
+
+        const getFiltradas = () => {
+          if (periodo === "mes") { const m = new Date().toISOString().slice(0,7); return data.filter(c => c.fecha?.startsWith(m)); }
+          if (periodo === "anterior") { const d = new Date(); d.setMonth(d.getMonth()-1); return data.filter(c => c.fecha?.startsWith(d.toISOString().slice(0,7))); }
+          if (periodo === "3meses") { const d = new Date(); d.setMonth(d.getMonth()-3); return data.filter(c => c.fecha >= d.toISOString().slice(0,10)); }
+          if (periodo === "custom") return data.filter(c => c.fecha >= fechaIni && c.fecha <= fechaFin);
+          return data;
+        };
+        const filtradas = getFiltradas().sort((a,b) => b.fecha?.localeCompare(a.fecha));
+        const totalMXN  = filtradas.reduce((a,c) => a + Number(c.total||0), 0);
+        const totalUSD  = filtradas.reduce((a,c) => a + Number(c.totalUSD||0), 0);
+        const tcProm    = totalUSD > 0 ? (totalMXN / totalUSD) : 0;
+        const pedidos   = [...new Set(filtradas.map(c => c.notas).filter(Boolean))].length;
+
+        // Alerta: productos sin recompra hace +45 días con punto de reorden
+        const hoy = new Date();
+        const sinReponer = (inventario||[]).filter(i => {
+          if (!i.puntoReorden || Number(i.puntoReorden) === 0) return false;
+          const ultimaCompra = data.filter(c => c.producto === i.nombre).sort((a,b) => b.fecha?.localeCompare(a.fecha))[0];
+          if (!ultimaCompra) return true;
+          const dias = Math.floor((hoy - new Date(ultimaCompra.fecha)) / 86400000);
+          return dias > 45;
+        });
+
+        return (<>
+          {/* Selector período */}
+          <Card style={{ padding:"10px 14px" }}>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom: periodo==="custom"?10:0 }}>
+              {[["mes","Este mes"],["anterior","Mes anterior"],["3meses","Últimos 3 meses"],["todo","Todo"],["custom","Personalizado"]].map(([val,lbl]) => (
+                <button key={val} onClick={()=>setPeriodo(val)} style={{
+                  padding:"5px 12px", borderRadius:16, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit",
+                  background: periodo===val ? C.blue+"22" : "transparent",
+                  border:`1px solid ${periodo===val ? C.blue : C.border}`,
+                  color: periodo===val ? C.blue : C.textDim,
+                }}>{lbl}</button>
+              ))}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-              <span style={{ fontSize: 15, fontWeight: 800, color: C.blue }}>{fMXN(c.total)}</span>
-              <div style={{display:"flex",gap:4}}>
-                <button onClick={() => setEditTargetC(c)} style={{ background:C.blue+"22", border:`1px solid ${C.blue}44`, borderRadius:6, cursor:"pointer", color:C.blue, padding:"3px 8px", fontSize:11, fontWeight:600 }}>✎</button>
-                <button onClick={() => setDelTargetC(c)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, padding: 2 }}><Icon name="trash" size={14} /></button>
+            {periodo==="custom" && (
+              <div style={{ display:"flex", gap:10, marginTop:8 }}>
+                <Input label="Desde" type="date" value={fechaIni} onChange={setFechaIni} />
+                <Input label="Hasta" type="date" value={fechaFin} onChange={setFechaFin} />
               </div>
-            </div>
+            )}
+          </Card>
+
+          {/* KPIs */}
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            <StatCard label="Total comprado MXN" value={fMXN(totalMXN)} color={C.blue} icon="purchase" sub={`${filtradas.length} líneas`} />
+            <StatCard label="Total en USD" value={`$${totalUSD.toFixed(0)}`} color={C.accent} sub={`TC prom: ${tcProm.toFixed(2)}`} />
           </div>
-        </Card>
-      ))}
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            <StatCard label="Pedidos distintos" value={String(pedidos||filtradas.length)} color={C.textMid} sub="facturas registradas" />
+            <StatCard label="Productos distintos" value={String([...new Set(filtradas.map(c=>c.producto))].length)} color={C.orange} sub="referencias compradas" />
+          </div>
+
+          {/* Alerta productos sin reponer +45 días */}
+          {sinReponer.length > 0 && (
+            <div style={{ background:C.orange+"18", border:`1px solid ${C.orange}44`, borderRadius:10, padding:"10px 14px" }}>
+              <div style={{ fontSize:12, fontWeight:700, color:C.orange, marginBottom:6 }}>
+                ⚠️ {sinReponer.length} producto(s) sin recompra hace más de 45 días
+              </div>
+              {sinReponer.map(i => (
+                <div key={i.id} style={{ fontSize:12, color:C.textMid, marginBottom:2 }}>
+                  {i.nombre} — Stock: {i.stock} · Reorden: {i.puntoReorden}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Lista filtrada */}
+          <div style={{ fontSize:11, color:C.textDim, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>
+            Compras del período ({filtradas.length})
+          </div>
+          {filtradas.map(c => (
+            <Card key={c.id} style={{ padding:"12px 14px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:C.text, marginBottom:4 }}>{c.producto}</div>
+                  <div style={{ fontSize:12, color:C.textDim }}>{fDate(c.fecha)} · {c.cantidad} uds · {c.proveedor}</div>
+                  <div style={{ fontSize:11, color:C.blue, marginTop:2 }}>${Number(c.totalUSD||0).toFixed(0)} USD · TC {c.tipoCambio}</div>
+                  {(c.lote||c.caducidad) && (
+                    <div style={{ display:"flex", gap:10, marginTop:3 }}>
+                      {c.lote && <span style={{ fontSize:11, color:C.textDim, fontFamily:"monospace" }}>Lote: {c.lote}</span>}
+                      {c.caducidad && <span style={{ fontSize:11, color:new Date(c.caducidad)<new Date()?C.red:C.textDim }}>Cad: {fDate(c.caducidad)}</span>}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6 }}>
+                  <span style={{ fontSize:15, fontWeight:800, color:C.blue }}>{fMXN(c.total)}</span>
+                  <div style={{ display:"flex", gap:4 }}>
+                    <button onClick={() => setEditTargetC(c)} style={{ background:C.blue+"22", border:`1px solid ${C.blue}44`, borderRadius:6, cursor:"pointer", color:C.blue, padding:"3px 8px", fontSize:11, fontWeight:600 }}>✎</button>
+                    <button onClick={() => setDelTargetC(c)} style={{ background:"none", border:"none", cursor:"pointer", color:C.textDim, padding:2 }}><Icon name="trash" size={14} /></button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+          {filtradas.length === 0 && (
+            <Card style={{ textAlign:"center", padding:24 }}>
+              <div style={{ fontSize:13, color:C.textDim }}>Sin compras en este período</div>
+            </Card>
+          )}
+        </>);
+      })()}
 
       {modal && (
         <Modal title="Registrar compra / factura" onClose={() => { setModal(false); setLineas([newLineCompra()]); }}>
@@ -1182,43 +1387,121 @@ function Gastos({ data, setData }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text }}>Gastos</h2>
-          <div style={{ fontSize: 12, color: C.textDim }}>{fMXN(data.reduce((a, g) => a + Number(g.monto || 0), 0))} total</div>
+          <div style={{ fontSize: 12, color: C.textDim }}>{data.length} registros totales</div>
         </div>
         <Btn onClick={() => setModal(true)}><Icon name="plus" size={14} /> Registrar</Btn>
       </div>
 
-      {porCategoria.length > 0 && (
-        <Card>
-          <div style={{ fontSize: 11, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Por categoría</div>
-          {porCategoria.map(({ cat, total }) => (
-            <div key={cat} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
-              <span style={{ fontSize: 13, color: C.textMid }}>{cat}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: C.orange }}>{fMXN(total)}</span>
-            </div>
-          ))}
-        </Card>
-      )}
+      {/* ── Dashboard Gastos ── */}
+      {(() => {
+        const [periodo, setPeriodo] = useState("mes");
+        const [fechaIni, setFechaIni] = useState(() => { const d = new Date(); d.setDate(1); return d.toISOString().slice(0,10); });
+        const [fechaFin, setFechaFin] = useState(today());
 
-      {sorted.map(g => (
-        <Card key={g.id} style={{ padding: "12px 14px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{g.descripcion}</div>
-                {g.recurrente && <Tag color={C.blue}>🔄 Recurrente</Tag>}
-              </div>
-              <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>{fDate(g.fecha)} · <Tag color={C.orange}>{g.categoria}</Tag></div>
+        const getFiltradas = () => {
+          if (periodo === "mes") { const m = new Date().toISOString().slice(0,7); return data.filter(g => g.fecha?.startsWith(m)); }
+          if (periodo === "anterior") { const d = new Date(); d.setMonth(d.getMonth()-1); return data.filter(g => g.fecha?.startsWith(d.toISOString().slice(0,7))); }
+          if (periodo === "3meses") { const d = new Date(); d.setMonth(d.getMonth()-3); return data.filter(g => g.fecha >= d.toISOString().slice(0,10)); }
+          if (periodo === "custom") return data.filter(g => g.fecha >= fechaIni && g.fecha <= fechaFin);
+          return data;
+        };
+        const filtradas = getFiltradas().sort((a,b) => b.fecha?.localeCompare(a.fecha));
+        const totalG = filtradas.reduce((a,g) => a + Number(g.monto||0), 0);
+
+        // Promedio mensual (últimos 3 meses con datos)
+        const meses3 = Array.from({length:3}, (_,i) => { const d = new Date(); d.setMonth(d.getMonth()-i); return d.toISOString().slice(0,7); });
+        const promedioMensual = meses3.reduce((a,m) => a + data.filter(g=>g.fecha?.startsWith(m)).reduce((s,g)=>s+Number(g.monto||0),0), 0) / 3;
+
+        // Por categoría del período
+        const porCat = CATEGORIAS_GASTO.map(cat => ({
+          cat, total: filtradas.filter(g=>g.categoria===cat).reduce((a,g)=>a+Number(g.monto||0),0)
+        })).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+        const maxCat = porCat[0]?.total||1;
+        const topCat = porCat[0]?.cat||"—";
+
+        return (<>
+          {/* Selector período */}
+          <Card style={{ padding:"10px 14px" }}>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom: periodo==="custom"?10:0 }}>
+              {[["mes","Este mes"],["anterior","Mes anterior"],["3meses","Últimos 3 meses"],["todo","Todo"],["custom","Personalizado"]].map(([val,lbl]) => (
+                <button key={val} onClick={()=>setPeriodo(val)} style={{
+                  padding:"5px 12px", borderRadius:16, fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit",
+                  background: periodo===val ? C.orange+"22" : "transparent",
+                  border:`1px solid ${periodo===val ? C.orange : C.border}`,
+                  color: periodo===val ? C.orange : C.textDim,
+                }}>{lbl}</button>
+              ))}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 15, fontWeight: 800, color: C.orange }}>{fMXN(g.monto)}</span>
-              <div style={{ display: "flex", gap: 4 }}>
-                <button onClick={() => setEditTargetG(g)} style={{ background: C.blue + "22", border: `1px solid ${C.blue}44`, borderRadius: 6, cursor: "pointer", color: C.blue, padding: "3px 6px", fontSize: 11 }}>✎</button>
-                <button onClick={() => setDelTargetG(g)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, padding: 2 }}><Icon name="trash" size={14} /></button>
+            {periodo==="custom" && (
+              <div style={{ display:"flex", gap:10, marginTop:8 }}>
+                <Input label="Desde" type="date" value={fechaIni} onChange={setFechaIni} />
+                <Input label="Hasta" type="date" value={fechaFin} onChange={setFechaFin} />
               </div>
-            </div>
+            )}
+          </Card>
+
+          {/* KPIs */}
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            <StatCard label="Total gastos" value={fMXN(totalG)} color={C.orange} icon="expense" sub={`${filtradas.length} registros`} />
+            <StatCard label="Promedio mensual" value={fMXN(promedioMensual)} color={C.yellow} sub="últimos 3 meses" />
           </div>
-        </Card>
-      ))}
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+            <StatCard label="Mayor categoría" value={topCat} color={C.red} sub={porCat[0]?fMXN(porCat[0].total):"—"} />
+            <StatCard label="Categorías activas" value={String(porCat.length)} color={C.textMid} sub="en este período" />
+          </div>
+
+          {/* Gráfica por categoría */}
+          {porCat.length > 0 && (
+            <Card>
+              <div style={{ fontSize:11, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:12 }}>Gasto por categoría</div>
+              {porCat.map(({cat,total}) => (
+                <div key={cat} style={{ marginBottom:10 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                    <span style={{ fontSize:12, color:C.text }}>{cat}</span>
+                    <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                      <span style={{ fontSize:11, color:C.textDim }}>{totalG>0?((total/totalG)*100).toFixed(0):0}%</span>
+                      <span style={{ fontSize:12, fontWeight:700, color:C.orange }}>{fMXN(total)}</span>
+                    </div>
+                  </div>
+                  <div style={{ height:8, background:C.bg, borderRadius:4, overflow:"hidden" }}>
+                    <div style={{ height:"100%", width:`${(total/maxCat*100).toFixed(0)}%`, background:C.orange, borderRadius:4, transition:"width .4s" }} />
+                  </div>
+                </div>
+              ))}
+            </Card>
+          )}
+
+          {/* Lista filtrada */}
+          <div style={{ fontSize:11, color:C.textDim, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>
+            Gastos del período ({filtradas.length})
+          </div>
+          {filtradas.map(g => (
+            <Card key={g.id} style={{ padding:"12px 14px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div>
+                  <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:C.text }}>{g.descripcion}</div>
+                    {g.recurrente && <Tag color={C.blue}>🔄 Recurrente</Tag>}
+                  </div>
+                  <div style={{ fontSize:11, color:C.textDim, marginTop:2 }}>{fDate(g.fecha)} · <Tag color={C.orange}>{g.categoria}</Tag></div>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <span style={{ fontSize:15, fontWeight:800, color:C.orange }}>{fMXN(g.monto)}</span>
+                  <div style={{ display:"flex", gap:4 }}>
+                    <button onClick={() => setEditTargetG(g)} style={{ background:C.blue+"22", border:`1px solid ${C.blue}44`, borderRadius:6, cursor:"pointer", color:C.blue, padding:"3px 6px", fontSize:11 }}>✎</button>
+                    <button onClick={() => setDelTargetG(g)} style={{ background:"none", border:"none", cursor:"pointer", color:C.textDim, padding:2 }}><Icon name="trash" size={14} /></button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+          {filtradas.length === 0 && (
+            <Card style={{ textAlign:"center", padding:24 }}>
+              <div style={{ fontSize:13, color:C.textDim }}>Sin gastos en este período</div>
+            </Card>
+          )}
+        </>);
+      })()}
 
       {modal && (
         <Modal title="Registrar gasto" onClose={() => setModal(false)}>
