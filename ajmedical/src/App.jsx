@@ -1717,6 +1717,104 @@ function Clientes({ data, setData, ventas }) {
 }
 
 // ============================================================
+// MODAL CARGAR LOTES — Componente separado para evitar hooks en IIFE
+// ============================================================
+function ModalCargarLotes({ item, data, setData, onClose }) {
+  const [lotesForm, setLotesForm] = useState([{
+    id: uid(), lote: "", caducidad: "",
+    cantidad: item.stock,
+    costoUnitario: item.costoUnitario,
+    proveedor: item.proveedor || "Medtronic/Covidien"
+  }]);
+
+  const addLoteForm = () => setLotesForm(p => [...p, {
+    id: uid(), lote: "", caducidad: "", cantidad: "",
+    costoUnitario: item.costoUnitario,
+    proveedor: item.proveedor || "Medtronic/Covidien"
+  }]);
+  const removeLoteForm = (id) => setLotesForm(p => p.filter(l => l.id !== id));
+  const updateLF = (id, k, v) => setLotesForm(p => p.map(l => l.id === id ? { ...l, [k]: v } : l));
+  const totalCantidad = lotesForm.reduce((a, l) => a + Number(l.cantidad || 0), 0);
+  const cuadra = totalCantidad === Number(item.stock);
+
+  const guardarLotes = async () => {
+    const nuevosLotes = lotesForm
+      .filter(l => Number(l.cantidad) > 0)
+      .map(l => ({
+        loteId: uid(),
+        lote: l.lote,
+        caducidad: l.caducidad,
+        cantidad: Number(l.cantidad),
+        cantidadOriginal: Number(l.cantidad),
+        costoUnitario: Number(l.costoUnitario || item.costoUnitario),
+        fechaEntrada: today(),
+        proveedor: l.proveedor,
+      }))
+      .sort((a, b) => {
+        if (!a.caducidad && !b.caducidad) return 0;
+        if (!a.caducidad) return 1;
+        if (!b.caducidad) return -1;
+        return a.caducidad.localeCompare(b.caducidad);
+      });
+    const updatedInv = data.map(i => i.id === item.id ? { ...i, lotes: nuevosLotes } : i);
+    setData(updatedInv);
+    await saveData(KEYS.inventario, updatedInv);
+    onClose();
+  };
+
+  return (
+    <Modal title={`Cargar lotes — ${item.nombre}`} onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ background: C.blue+"11", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.blue }}>
+          Tienes <strong>{item.stock} piezas</strong> en stock. Divídelas en sus lotes y fechas de caducidad reales.
+          <div style={{ marginTop: 4, color: cuadra ? C.green : C.orange, fontWeight: 700 }}>
+            {cuadra ? `✓ Total cuadra: ${totalCantidad} piezas` : `⚠️ Asignado: ${totalCantidad} de ${item.stock} piezas`}
+          </div>
+        </div>
+
+        {lotesForm.map((l, i) => (
+          <div key={l.id} style={{ background: C.bg, borderRadius: 10, padding: 10, border: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>Lote #{i + 1}</span>
+              {lotesForm.length > 1 && (
+                <button onClick={() => removeLoteForm(l.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: 11, fontFamily: "inherit" }}>✕ Eliminar</button>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>No. Lote *</label>
+                <input value={l.lote} onChange={e => updateLF(l.id, "lote", e.target.value)} placeholder="Ej: AB12345"
+                  style={{ width: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", color: C.text, fontSize: 13, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ flex: "0 0 80px" }}>
+                <label style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>Piezas *</label>
+                <input type="number" value={l.cantidad} onChange={e => updateLF(l.id, "cantidad", e.target.value)}
+                  style={{ width: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>Caducidad *</label>
+                <input type="date" value={l.caducidad} onChange={e => updateLF(l.id, "caducidad", e.target.value)}
+                  style={{ width: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>Costo MXN/ud</label>
+                <input type="number" value={l.costoUnitario} onChange={e => updateLF(l.id, "costoUnitario", e.target.value)}
+                  style={{ width: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <Btn variant="ghost" onClick={addLoteForm}><Icon name="plus" size={13} /> Agregar otro lote</Btn>
+        <Btn onClick={guardarLotes}>Guardar lotes de trazabilidad</Btn>
+      </div>
+    </Modal>
+  );
+}
+
+// ============================================================
 // INVENTARIO
 // ============================================================
 function Inventario({ data, setData, ventas }) {
@@ -2042,88 +2140,14 @@ function Inventario({ data, setData, ventas }) {
         </Modal>
       )}
 
-      {/* Modal cargar lotes iniciales */}
-      {loteTarget && (() => {
-        const [lotesForm, setLotesForm] = useState([{ id: uid(), lote: "", caducidad: "", cantidad: loteTarget.stock, costoUnitario: loteTarget.costoUnitario, proveedor: loteTarget.proveedor || "Medtronic/Covidien" }]);
-        const addLoteForm = () => setLotesForm(p => [...p, { id: uid(), lote: "", caducidad: "", cantidad: "", costoUnitario: loteTarget.costoUnitario, proveedor: loteTarget.proveedor || "Medtronic/Covidien" }]);
-        const removeLoteForm = (id) => setLotesForm(p => p.filter(l => l.id !== id));
-        const updateLF = (id, k, v) => setLotesForm(p => p.map(l => l.id === id ? { ...l, [k]: v } : l));
-        const totalCantidad = lotesForm.reduce((a, l) => a + Number(l.cantidad || 0), 0);
-
-        const guardarLotes = async () => {
-          const nuevosLotes = lotesForm
-            .filter(l => l.cantidad > 0)
-            .map(l => ({
-              loteId: uid(),
-              lote: l.lote,
-              caducidad: l.caducidad,
-              cantidad: Number(l.cantidad),
-              cantidadOriginal: Number(l.cantidad),
-              costoUnitario: Number(l.costoUnitario || loteTarget.costoUnitario),
-              fechaEntrada: today(),
-              proveedor: l.proveedor,
-            }))
-            .sort((a, b) => {
-              if (!a.caducidad && !b.caducidad) return 0;
-              if (!a.caducidad) return 1;
-              if (!b.caducidad) return -1;
-              return a.caducidad.localeCompare(b.caducidad);
-            });
-          const updatedInv = data.map(i => i.id === loteTarget.id ? { ...i, lotes: nuevosLotes } : i);
-          setData(updatedInv); await saveData(KEYS.inventario, updatedInv); setLoteTarget(null);
-        };
-
-        return (
-          <Modal title={`Cargar lotes — ${loteTarget.nombre}`} onClose={() => setLoteTarget(null)}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ background: C.blue+"11", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.blue }}>
-                Tienes <strong>{loteTarget.stock} piezas</strong> sin trazabilidad. Divídelas en sus lotes y fechas de caducidad reales.
-                <div style={{ marginTop: 4, color: totalCantidad !== loteTarget.stock ? C.orange : C.green, fontWeight: 700 }}>
-                  {totalCantidad === loteTarget.stock ? `✓ Total cuadra: ${totalCantidad} piezas` : `⚠️ Total asignado: ${totalCantidad} de ${loteTarget.stock} piezas`}
-                </div>
-              </div>
-
-              {lotesForm.map((l, i) => (
-                <div key={l.id} style={{ background: C.bg, borderRadius: 10, padding: 10, border: `1px solid ${C.border}` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: C.accent }}>Lote #{i + 1}</span>
-                    {lotesForm.length > 1 && <button onClick={() => removeLoteForm(l.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: 11 }}>✕ Eliminar</button>}
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>No. Lote *</label>
-                      <input value={l.lote} onChange={e => updateLF(l.id, "lote", e.target.value)} placeholder="Ej: AB12345"
-                        style={{ width: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", color: C.text, fontSize: 13, fontFamily: "monospace", outline: "none", boxSizing: "border-box" }} />
-                    </div>
-                    <div style={{ flex: "0 0 80px" }}>
-                      <label style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>Piezas *</label>
-                      <input type="number" value={l.cantidad} onChange={e => updateLF(l.id, "cantidad", e.target.value)}
-                        style={{ width: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>Caducidad *</label>
-                      <input type="date" value={l.caducidad} onChange={e => updateLF(l.id, "caducidad", e.target.value)}
-                        style={{ width: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: 10, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>Costo MXN/ud</label>
-                      <input type="number" value={l.costoUnitario} onChange={e => updateLF(l.id, "costoUnitario", e.target.value)}
-                        style={{ width: "100%", marginTop: 4, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", color: C.text, fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              <Btn variant="ghost" onClick={addLoteForm}><Icon name="plus" size={13} /> Agregar otro lote</Btn>
-              <Btn onClick={guardarLotes} style={{ opacity: totalCantidad !== loteTarget.stock ? 0.6 : 1 }}>
-                Guardar lotes de trazabilidad
-              </Btn>
-            </div>
-          </Modal>
-        );
-      })()}
+      {loteTarget && (
+        <ModalCargarLotes
+          item={loteTarget}
+          data={data}
+          setData={setData}
+          onClose={() => setLoteTarget(null)}
+        />
+      )}
     </div>
   );
 }
