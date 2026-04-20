@@ -1720,12 +1720,16 @@ function Clientes({ data, setData, ventas }) {
 // MODAL CARGAR LOTES — Componente separado para evitar hooks en IIFE
 // ============================================================
 function ModalCargarLotes({ item, data, setData, onClose }) {
-  const [lotesForm, setLotesForm] = useState([{
-    id: uid(), lote: "", caducidad: "",
-    cantidad: item.stock,
-    costoUnitario: item.costoUnitario,
-    proveedor: item.proveedor || "Medtronic/Covidien"
-  }]);
+  // Calcular cuántas piezas ya tienen lote registrado
+  const lotesExistentes = (item.lotes || []).filter(l => l.cantidad > 0);
+  const piezasConLote = lotesExistentes.reduce((a, l) => a + Number(l.cantidad || 0), 0);
+  const piezasSinLote = Number(item.stock) - piezasConLote;
+
+  const [lotesForm, setLotesForm] = useState(
+    lotesExistentes.length > 0
+      ? lotesExistentes.map(l => ({ id: uid(), lote: l.lote, caducidad: l.caducidad, cantidad: l.cantidad, costoUnitario: l.costoUnitario, proveedor: l.proveedor || item.proveedor || "Medtronic/Covidien" }))
+      : [{ id: uid(), lote: "", caducidad: "", cantidad: "", costoUnitario: item.costoUnitario, proveedor: item.proveedor || "Medtronic/Covidien" }]
+  );
 
   const addLoteForm = () => setLotesForm(p => [...p, {
     id: uid(), lote: "", caducidad: "", cantidad: "",
@@ -1734,10 +1738,13 @@ function ModalCargarLotes({ item, data, setData, onClose }) {
   }]);
   const removeLoteForm = (id) => setLotesForm(p => p.filter(l => l.id !== id));
   const updateLF = (id, k, v) => setLotesForm(p => p.map(l => l.id === id ? { ...l, [k]: v } : l));
-  const totalCantidad = lotesForm.reduce((a, l) => a + Number(l.cantidad || 0), 0);
-  const cuadra = totalCantidad === Number(item.stock);
+
+  const totalAsignado = lotesForm.reduce((a, l) => a + Number(l.cantidad || 0), 0);
+  const sinTrazabilidad = Number(item.stock) - totalAsignado;
+  const excede = totalAsignado > Number(item.stock);
 
   const guardarLotes = async () => {
+    if (excede) return;
     const nuevosLotes = lotesForm
       .filter(l => Number(l.cantidad) > 0)
       .map(l => ({
@@ -1765,12 +1772,30 @@ function ModalCargarLotes({ item, data, setData, onClose }) {
   return (
     <Modal title={`Cargar lotes — ${item.nombre}`} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ background: C.blue+"11", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.blue }}>
-          Tienes <strong>{item.stock} piezas</strong> en stock. Divídelas en sus lotes y fechas de caducidad reales.
-          <div style={{ marginTop: 4, color: cuadra ? C.green : C.orange, fontWeight: 700 }}>
-            {cuadra ? `✓ Total cuadra: ${totalCantidad} piezas` : `⚠️ Asignado: ${totalCantidad} de ${item.stock} piezas`}
+
+        {/* Resumen de estado */}
+        <div style={{ background: C.blue+"11", borderRadius: 8, padding: "10px 12px", fontSize: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ color: C.textDim }}>Stock total del producto</span>
+            <strong style={{ color: C.text }}>{item.stock} piezas</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+            <span style={{ color: C.textDim }}>Asignadas a lotes (en este formulario)</span>
+            <strong style={{ color: excede ? C.red : totalAsignado > 0 ? C.green : C.textDim }}>{totalAsignado} piezas</strong>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 6, borderTop: `1px solid ${C.border}` }}>
+            <span style={{ color: C.textDim }}>Sin trazabilidad (otra bodega / sin lote)</span>
+            <strong style={{ color: sinTrazabilidad > 0 ? C.yellow : C.green }}>
+              {excede ? "⛔ Excede el stock" : sinTrazabilidad > 0 ? `${sinTrazabilidad} piezas` : "✓ Todas tienen lote"}
+            </strong>
           </div>
         </div>
+
+        {excede && (
+          <div style={{ background: C.red+"18", border: `1px solid ${C.red}44`, borderRadius: 8, padding: "8px 12px", fontSize: 12, color: C.red, fontWeight: 700 }}>
+            ⛔ La cantidad asignada ({totalAsignado}) supera el stock ({item.stock}). Ajusta las cantidades.
+          </div>
+        )}
 
         {lotesForm.map((l, i) => (
           <div key={l.id} style={{ background: C.bg, borderRadius: 10, padding: 10, border: `1px solid ${C.border}` }}>
@@ -1808,7 +1833,11 @@ function ModalCargarLotes({ item, data, setData, onClose }) {
         ))}
 
         <Btn variant="ghost" onClick={addLoteForm}><Icon name="plus" size={13} /> Agregar otro lote</Btn>
-        <Btn onClick={guardarLotes}>Guardar lotes de trazabilidad</Btn>
+        <Btn onClick={guardarLotes} style={{ opacity: excede ? 0.4 : 1 }}>
+          {sinTrazabilidad > 0
+            ? `Guardar — ${totalAsignado} con lote · ${sinTrazabilidad} sin trazabilidad`
+            : "Guardar lotes de trazabilidad"}
+        </Btn>
       </div>
     </Modal>
   );
