@@ -544,7 +544,7 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
     const nuevasVentas = validas.map(l => {
       const total = Number(l.cantidad) * Number(l.precioUnitario);
       const utilidad = total - Number(l.cantidad) * Number(l.costo || 0);
-      return { id: uid(), fecha, cliente: nombreCliente, producto: l.productoFinal, cantidad: l.cantidad, precioUnitario: l.precioUnitario, costo: l.costo, total, utilidad, notas, formaPago, cobrado: formaPago !== "credito", lote: (l.loteSeleccionado && l.loteSeleccionado !== "__sin_trazabilidad__") ? l.loteSeleccionado : "", caducidad: l.caducidadSeleccionada || "" };
+      return { id: uid(), fecha, cliente: nombreCliente, producto: l.productoFinal, cantidad: l.cantidad, precioUnitario: l.precioUnitario, costo: l.costo, total, utilidad, notas, formaPago: formaPago === "credito" ? "credito" : formaPago, cobrado: formaPago !== "credito", lote: (l.loteSeleccionado && l.loteSeleccionado !== "__sin_trazabilidad__") ? l.loteSeleccionado : "", caducidad: l.caducidadSeleccionada || "" };
     });
 
     const updatedVentas = [...data, ...nuevasVentas];
@@ -640,7 +640,7 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
               <Input label="Precio unitario" type="number" value={editTarget.precioUnitario} onChange={v => setEditTarget(p=>({...p,precioUnitario:v}))} />
               <Input label="Costo unit." type="number" value={editTarget.costo} onChange={v => setEditTarget(p=>({...p,costo:v}))} />
             </div>
-            <Select label="Forma de pago" value={editTarget.formaPago||"efectivo"} onChange={v => setEditTarget(p=>({...p,formaPago:v}))} options={[{value:"efectivo",label:"💵 Efectivo"},{value:"transferencia",label:"🏦 Transferencia"},{value:"credito",label:"⏳ Crédito"}]} />
+            <Select label="Forma de pago" value={editTarget.formaPago||"efectivo"} onChange={v => setEditTarget(p=>({...p,formaPago:v}))} options={[{value:"efectivo",label:"💵 Efectivo"},{value:"transferencia",label:"🏦 Transferencia"},{value:"tarjeta_credito",label:"💳 T. Crédito"},{value:"tarjeta_debito",label:"💳 T. Débito"},{value:"credito",label:"⏳ Crédito (pendiente)"}]} />
             <Input label="Notas" value={editTarget.notas||""} onChange={v => setEditTarget(p=>({...p,notas:v}))} />
             <Btn onClick={saveEdit}>Guardar cambios</Btn>
           </div>
@@ -777,9 +777,11 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
                   <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", marginBottom:4 }}>
                     <span style={{ fontSize:14, fontWeight:700, color:C.text }}>{v.producto}</span>
                     <Tag>{v.cliente}</Tag>
-                    {v.formaPago==="credito" && <Tag color={C.yellow}>⏳ Crédito</Tag>}
-                    {v.formaPago==="transferencia" && <Tag color={C.blue}>🏦 Transferencia</Tag>}
-                    {v.formaPago==="efectivo" && <Tag color={C.green}>💵 Efectivo</Tag>}
+                    {v.formaPago==="credito"         && <Tag color={C.yellow}>⏳ Crédito</Tag>}
+                    {v.formaPago==="transferencia"   && <Tag color={C.blue}>🏦 Transferencia</Tag>}
+                    {v.formaPago==="efectivo"        && <Tag color={C.green}>💵 Efectivo</Tag>}
+                    {v.formaPago==="tarjeta_credito" && <Tag color={C.accent}>💳 T. Crédito</Tag>}
+                    {v.formaPago==="tarjeta_debito"  && <Tag color={C.textMid}>💳 T. Débito</Tag>}
                   </div>
                   <div style={{ fontSize:12, color:C.textDim }}>{fDate(v.fecha)} · {v.cantidad} uds · {fMXN(v.precioUnitario)}/ud</div>
                   {v.lote && <div style={{ fontSize:11, color:C.blue, marginTop:2, fontFamily:"monospace" }}>🔍 Lote: {v.lote}{v.caducidad ? ` · Cad: ${fDate(v.caducidad)}` : ""}</div>}
@@ -824,26 +826,54 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
               </div>
             </div>
 
-            {/* Forma de pago */}
+            {/* Método de pago + ¿Es a crédito? */}
             <div>
-              <div style={{ fontSize: 11, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Forma de pago</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 11, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Método de pago</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                 {[
-                  { val: "efectivo",      label: "💵 Efectivo",      color: C.green  },
-                  { val: "transferencia", label: "🏦 Transferencia",  color: C.blue   },
-                  { val: "credito",       label: "⏳ Crédito",        color: C.yellow },
+                  { val: "efectivo",        label: "💵 Efectivo",         color: C.green  },
+                  { val: "transferencia",   label: "🏦 Transferencia",     color: C.blue   },
+                  { val: "tarjeta_credito", label: "💳 T. Crédito",        color: C.accent },
+                  { val: "tarjeta_debito",  label: "💳 T. Débito",         color: C.textMid},
                 ].map(({ val, label, color }) => (
                   <button key={val} onClick={() => setFormaPago(val)} style={{
-                    flex: 1, minWidth: 100, padding: "10px", borderRadius: 10,
+                    flex: 1, minWidth: 90, padding: "9px 6px", borderRadius: 10,
                     border: `2px solid ${formaPago === val ? color : C.border}`,
                     background: formaPago === val ? color + "22" : "transparent",
                     color: formaPago === val ? color : C.textDim,
-                    fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+                    fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "inherit",
                   }}>
                     {label}
                   </button>
                 ))}
               </div>
+
+              {/* ¿Es venta a crédito? — toggle independiente */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: C.bg, borderRadius: 10, border: `1px solid ${formaPago === "credito" ? C.yellow+"55" : C.border}` }}>
+                <button
+                  onClick={() => setFormaPago(p => p === "credito" ? "efectivo" : "credito")}
+                  style={{
+                    width: 36, height: 20, borderRadius: 10, border: "none", cursor: "pointer",
+                    background: formaPago === "credito" ? C.yellow : C.border,
+                    position: "relative", transition: "background .2s", flexShrink: 0,
+                  }}
+                >
+                  <div style={{
+                    width: 14, height: 14, borderRadius: "50%", background: "#fff",
+                    position: "absolute", top: 3, transition: "left .2s",
+                    left: formaPago === "credito" ? 18 : 3,
+                  }} />
+                </button>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: formaPago === "credito" ? C.yellow : C.text }}>
+                    {formaPago === "credito" ? "⏳ Venta a crédito" : "Venta de contado"}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.textDim }}>
+                    {formaPago === "credito" ? "El cobro queda pendiente — se registrará en Cobros" : "El pago ya fue recibido con el método seleccionado"}
+                  </div>
+                </div>
+              </div>
+
               {formaPago === "credito" && (
                 <div style={{ marginTop: 8 }}>
                   <Input label="Fecha límite de pago" type="date" value={fechaVenceCobro} onChange={setFechaVenceCobro} />
