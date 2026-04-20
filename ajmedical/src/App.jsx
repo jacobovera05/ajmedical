@@ -544,7 +544,7 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
     const nuevasVentas = validas.map(l => {
       const total = Number(l.cantidad) * Number(l.precioUnitario);
       const utilidad = total - Number(l.cantidad) * Number(l.costo || 0);
-      return { id: uid(), fecha, cliente: nombreCliente, producto: l.productoFinal, cantidad: l.cantidad, precioUnitario: l.precioUnitario, costo: l.costo, total, utilidad, notas, formaPago, cobrado: formaPago === "contado", lote: l.loteSeleccionado || "", caducidad: l.caducidadSeleccionada || "" };
+      return { id: uid(), fecha, cliente: nombreCliente, producto: l.productoFinal, cantidad: l.cantidad, precioUnitario: l.precioUnitario, costo: l.costo, total, utilidad, notas, formaPago, cobrado: formaPago !== "credito", lote: (l.loteSeleccionado && l.loteSeleccionado !== "__sin_trazabilidad__") ? l.loteSeleccionado : "", caducidad: l.caducidadSeleccionada || "" };
     });
 
     const updatedVentas = [...data, ...nuevasVentas];
@@ -575,8 +575,8 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
         const newStock = stockActual - qty;
         let lotesActualizados = [...(updatedInv[match].lotes || [])];
 
-        if (l.loteSeleccionado) {
-          // Descontar del lote específico que eligió el usuario
+        if (l.loteSeleccionado && l.loteSeleccionado !== "__sin_trazabilidad__") {
+          // Descontar del lote específico elegido
           let restante = qty;
           lotesActualizados = lotesActualizados.map(lote => {
             if (restante <= 0) return lote;
@@ -585,7 +585,7 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
             restante -= descontar;
             return { ...lote, cantidad: lote.cantidad - descontar };
           }).filter(lote => lote.cantidad > 0);
-          // Si sobraron piezas a descontar (más de las que había en ese lote), quitar del siguiente
+          // Si sobró por insuficiencia en ese lote, descontar del siguiente disponible
           if (restante > 0) {
             lotesActualizados = lotesActualizados.map(lote => {
               if (restante <= 0) return lote;
@@ -595,8 +595,8 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
             }).filter(lote => lote.cantidad > 0);
           }
         } else {
-          // Sin lote seleccionado: descontar del total sin tocar lotes individuales
-          lotesActualizados = lotesActualizados; // sin cambio en lotes
+          // Sin trazabilidad: solo reducir el stock total, sin tocar lotes individuales
+          lotesActualizados = lotesActualizados;
         }
 
         updatedInv[match] = { ...updatedInv[match], stock: newStock, lotes: lotesActualizados };
@@ -640,7 +640,7 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
               <Input label="Precio unitario" type="number" value={editTarget.precioUnitario} onChange={v => setEditTarget(p=>({...p,precioUnitario:v}))} />
               <Input label="Costo unit." type="number" value={editTarget.costo} onChange={v => setEditTarget(p=>({...p,costo:v}))} />
             </div>
-            <Select label="Forma de pago" value={editTarget.formaPago||"contado"} onChange={v => setEditTarget(p=>({...p,formaPago:v}))} options={[{value:"contado",label:"Contado"},{value:"credito",label:"Crédito"}]} />
+            <Select label="Forma de pago" value={editTarget.formaPago||"efectivo"} onChange={v => setEditTarget(p=>({...p,formaPago:v}))} options={[{value:"efectivo",label:"💵 Efectivo"},{value:"transferencia",label:"🏦 Transferencia"},{value:"credito",label:"⏳ Crédito"}]} />
             <Input label="Notas" value={editTarget.notas||""} onChange={v => setEditTarget(p=>({...p,notas:v}))} />
             <Btn onClick={saveEdit}>Guardar cambios</Btn>
           </div>
@@ -777,7 +777,9 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
                   <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", marginBottom:4 }}>
                     <span style={{ fontSize:14, fontWeight:700, color:C.text }}>{v.producto}</span>
                     <Tag>{v.cliente}</Tag>
-                    {v.formaPago==="credito" && <Tag color={C.yellow}>Crédito</Tag>}
+                    {v.formaPago==="credito" && <Tag color={C.yellow}>⏳ Crédito</Tag>}
+                    {v.formaPago==="transferencia" && <Tag color={C.blue}>🏦 Transferencia</Tag>}
+                    {v.formaPago==="efectivo" && <Tag color={C.green}>💵 Efectivo</Tag>}
                   </div>
                   <div style={{ fontSize:12, color:C.textDim }}>{fDate(v.fecha)} · {v.cantidad} uds · {fMXN(v.precioUnitario)}/ud</div>
                   {v.lote && <div style={{ fontSize:11, color:C.blue, marginTop:2, fontFamily:"monospace" }}>🔍 Lote: {v.lote}{v.caducidad ? ` · Cad: ${fDate(v.caducidad)}` : ""}</div>}
@@ -825,15 +827,20 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
             {/* Forma de pago */}
             <div>
               <div style={{ fontSize: 11, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Forma de pago</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {["contado", "credito"].map(op => (
-                  <button key={op} onClick={() => setFormaPago(op)} style={{
-                    flex: 1, padding: "10px", borderRadius: 10, border: `2px solid ${formaPago === op ? (op === "contado" ? C.green : C.yellow) : C.border}`,
-                    background: formaPago === op ? (op === "contado" ? C.green + "22" : C.yellow + "22") : "transparent",
-                    color: formaPago === op ? (op === "contado" ? C.green : C.yellow) : C.textDim,
-                    fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "inherit", textTransform: "capitalize",
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[
+                  { val: "efectivo",      label: "💵 Efectivo",      color: C.green  },
+                  { val: "transferencia", label: "🏦 Transferencia",  color: C.blue   },
+                  { val: "credito",       label: "⏳ Crédito",        color: C.yellow },
+                ].map(({ val, label, color }) => (
+                  <button key={val} onClick={() => setFormaPago(val)} style={{
+                    flex: 1, minWidth: 100, padding: "10px", borderRadius: 10,
+                    border: `2px solid ${formaPago === val ? color : C.border}`,
+                    background: formaPago === val ? color + "22" : "transparent",
+                    color: formaPago === val ? color : C.textDim,
+                    fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "inherit",
                   }}>
-                    {op === "contado" ? "✓ Contado" : "⏳ Crédito"}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -895,34 +902,44 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
                     </div>
                   </div>
 
-                  {/* Selector de lote — solo si hay lotes disponibles */}
-                  {lotesDisponibles.length > 0 && (
+                  {/* Selector de lote — siempre visible si el producto tiene stock */}
+                  {invMatch && Number(invMatch.stock) > 0 && (
                     <div style={{ marginTop: 8, background: C.blue+"11", borderRadius: 8, padding: "8px 10px", border: `1px solid ${C.blue}33` }}>
-                      <div style={{ fontSize: 10, color: C.blue, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>🔍 Seleccionar lote a salir</div>
+                      <div style={{ fontSize: 10, color: C.blue, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>🔍 Lote que sale</div>
                       <select
                         value={l.loteSeleccionado || ""}
                         onChange={e => {
-                          const loteElegido = lotesDisponibles.find(lt => lt.lote === e.target.value);
-                          updateLinea(idx, "loteSeleccionado", e.target.value);
-                          updateLinea(idx, "caducidadSeleccionada", loteElegido?.caducidad || "");
+                          const val = e.target.value;
+                          if (val === "__sin_trazabilidad__") {
+                            updateLinea(idx, "loteSeleccionado", "__sin_trazabilidad__");
+                            updateLinea(idx, "caducidadSeleccionada", "");
+                          } else {
+                            const loteElegido = lotesDisponibles.find(lt => lt.lote === val);
+                            updateLinea(idx, "loteSeleccionado", val);
+                            updateLinea(idx, "caducidadSeleccionada", loteElegido?.caducidad || "");
+                          }
                         }}
-                        style={{ width: "100%", background: C.surface, border: `1px solid ${l.loteSeleccionado ? C.blue+"55" : C.orange+"55"}`, borderRadius: 8, padding: "8px 10px", color: l.loteSeleccionado ? C.text : C.textDim, fontSize: 13, fontFamily: "inherit", outline: "none" }}
+                        style={{ width: "100%", background: C.surface, border: `1px solid ${l.loteSeleccionado ? C.blue+"55" : C.border}`, borderRadius: 8, padding: "8px 10px", color: l.loteSeleccionado ? C.text : C.textDim, fontSize: 13, fontFamily: "inherit", outline: "none" }}
                       >
-                        <option value="">— Seleccionar lote —</option>
+                        <option value="">— Seleccionar —</option>
                         {lotesDisponibles.map(lt => (
                           <option key={lt.loteId} value={lt.lote}>
-                            {lt.lote ? `Lote: ${lt.lote}` : "Sin número de lote"} · {lt.cantidad} uds disponibles{lt.caducidad ? ` · Cad: ${lt.caducidad}` : ""}
+                            Lote: {lt.lote || "s/n"} · {lt.cantidad} uds{lt.caducidad ? ` · Cad: ${lt.caducidad}` : ""}
                           </option>
                         ))}
+                        <option value="__sin_trazabilidad__">⚠️ Sin trazabilidad (sin lote registrado)</option>
                       </select>
-                      {l.loteSeleccionado && (
+                      {l.loteSeleccionado === "__sin_trazabilidad__" && (
+                        <div style={{ fontSize: 11, color: C.yellow, marginTop: 4 }}>⚠️ Esta venta se registrará sin número de lote ni caducidad</div>
+                      )}
+                      {l.loteSeleccionado && l.loteSeleccionado !== "__sin_trazabilidad__" && (
                         <div style={{ fontSize: 11, color: C.blue, marginTop: 4 }}>
                           ✓ Saldrá del lote <strong>{l.loteSeleccionado}</strong>
                           {l.caducidadSeleccionada && <> · Cad: <strong>{fDate(l.caducidadSeleccionada)}</strong></>}
                         </div>
                       )}
                       {!l.loteSeleccionado && (
-                        <div style={{ fontSize: 10, color: C.orange, marginTop: 4 }}>⚠️ Sin lote seleccionado — la venta se registrará sin trazabilidad</div>
+                        <div style={{ fontSize: 10, color: C.textDim, marginTop: 4 }}>Selecciona el lote que estás vendiendo, o "Sin trazabilidad"</div>
                       )}
                     </div>
                   )}
