@@ -371,68 +371,84 @@ function Dashboard({ ventas, compras, gastos, cobros, inventario, settings, otro
     ventasMes.reduce((acc, v) => { acc[v.producto] = (acc[v.producto] || 0) + Number(v.total || 0); return acc; }, {})
   ).sort((a, b) => b[1] - a[1]).slice(0, 4);
 
-  return (
+return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      {/* ── Utilidad mes + Utilidad acumulada ── */}
-      <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-        <Card style={{ flex:1, minWidth:140, background:"#0d2218", border:`1px solid ${C.green}55` }}>
-          <div style={{ fontSize:10, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>📈 Utilidad bruta del mes</div>
-          <div style={{ fontSize:26, fontWeight:900, color:C.green, letterSpacing:-1 }}>{fMXN(utilidadBrutaMes)}</div>
-          <div style={{ fontSize:11, color:C.textDim, marginTop:6 }}>Ventas: {fMXN(totalVentasMes)}</div>
+      {/* — Utilidad mes + Utilidad acumulada — */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Card style={{ flex: 1, minWidth: 140, borderTop: `3px solid ${C.green}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <Icon name="trend" size={14} />
+            <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Utilidad bruta del mes</div>
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: C.text, letterSpacing: -1 }}>{fMXN(utilidadBrutaMes)}</div>
+          <div style={{ fontSize: 11, color: C.textDim, marginTop: 6 }}>Ventas: {fMXN(totalVentasMes)}</div>
         </Card>
-        <Card style={{ flex:1, minWidth:140, background:"#0d1a2b", border:`1px solid ${C.blue}44` }}>
-          <div style={{ fontSize:10, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>💰 Utilidad acumulada</div>
-          <div style={{ fontSize:26, fontWeight:900, color:C.blue, letterSpacing:-1 }}>{fMXN(utilidadBrutaHist)}</div>
-          <div style={{ fontSize:11, color:C.textDim, marginTop:6 }}>Histórico total</div>
+        <Card style={{ flex: 1, minWidth: 140, borderTop: `3px solid ${C.blue}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <Icon name="cash" size={14} />
+            <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Utilidad acumulada</div>
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: C.text, letterSpacing: -1 }}>{fMXN(utilidadBrutaHist)}</div>
+          <div style={{ fontSize: 11, color: C.textDim, marginTop: 6 }}>Histórico total</div>
         </Card>
       </div>
 
-      {/* ── Saldo en bancos ── */}
-      <Card style={{ background:"#1a1a2e", border:`1px solid ${C.accent}33` }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+      {/* — Saldo en bancos — */}
+      <Card style={{ borderTop: `3px solid ${C.accent}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
           <div>
-            <div style={{ fontSize:10, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>🏦 Saldo en bancos</div>
-            <div style={{ fontSize:26, fontWeight:900, color:C.accent, letterSpacing:-1 }}>{fMXN(saldoBancos)}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <Icon name="bank" size={14} />
+              <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Saldo en bancos</div>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: C.text, letterSpacing: -1 }}>{fMXN(saldoBancos)}</div>
           </div>
-          <div style={{ textAlign:"right", fontSize:11, color:C.textDim }}>
-            <div>Ventas: <span style={{color:C.green}}>{fMXN(totalVentasHist)}</span></div>
-            {totalOtrosIngresos > 0 && <div>Otros ing.: <span style={{color:C.blue}}>+{fMXN(totalOtrosIngresos)}</span></div>}
-            <div>Compras: <span style={{color:C.red}}>−{fMXN(totalComprasHist)}</span></div>
-            <div>Gastos: <span style={{color:C.orange}}>−{fMXN(totalGastosHist)}</span></div>
+          <div style={{ textAlign: "right", fontSize: 11, color: C.textDim }}>
+            <div>Ventas: <span style={{ color: C.green, fontWeight: 600 }}>{fMXN(totalVentasHist)}</span></div>
+            {totalOtrosIngresos > 0 && <div>Otros ing.: <span style={{ color: C.blue, fontWeight: 600 }}>+{fMXN(totalOtrosIngresos)}</span></div>}
+            <div>Compras: <span style={{ color: C.red, fontWeight: 600 }}>−{fMXN(totalComprasHist)}</span></div>
+            <div>Gastos: <span style={{ color: C.orange, fontWeight: 600 }}>−{fMXN(totalGastosHist)}</span></div>
           </div>
         </div>
-        <div style={{ height:8, background:C.bg, borderRadius:4, overflow:"hidden" }}>
-          <div style={{ height:"100%", width:`${Math.min(100, (saldoBancos / (totalVentasHist + totalOtrosIngresos)) * 100)}%`, background: saldoBancos > 0 ? C.accent : C.red, borderRadius:4, transition:"width .5s" }} />
+        <div style={{ height: 8, background: C.bg, borderRadius: 4, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${Math.min(100, (saldoBancos / (totalVentasHist + totalOtrosIngresos)) * 100)}%`, background: saldoBancos > 0 ? C.accent : C.red, borderRadius: 4, transition: "width .5s" }} />
         </div>
-        <div style={{ fontSize:11, color:C.textDim, marginTop:6 }}>
+        <div style={{ fontSize: 11, color: C.textDim, marginTop: 6 }}>
           {((saldoBancos / (totalVentasHist + totalOtrosIngresos || 1)) * 100).toFixed(1)}% del total facturado disponible en caja
         </div>
-        {porCobrar > 0 && <div style={{ marginTop:8, paddingTop:8, borderTop:`1px solid ${C.border}`, fontSize:12, color:C.yellow }}>📋 Por cobrar: <strong>{fMXN(porCobrar)}</strong></div>}
+        {porCobrar > 0 && (
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}`, fontSize: 12, color: C.yellow, display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon name="document" size={14} /> Por cobrar: <strong>{fMXN(porCobrar)}</strong>
+          </div>
+        )}
       </Card>
 
-      {/* ── Meta mensual ── */}
+      {/* — Meta mensual — */}
       <Card>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-          <div style={{ fontSize:11, color:C.textDim, fontWeight:700, textTransform:"uppercase", letterSpacing:1 }}>🎯 Meta mensual</div>
-          <div style={{ fontSize:12, color:C.accent, fontWeight:700 }}>{fMXN(totalVentasMes)} / {fMXN(metaMensual)}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon name="target" size={14} />
+            <div style={{ fontSize: 11, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Meta mensual</div>
+          </div>
+          <div style={{ fontSize: 12, color: C.accent, fontWeight: 700 }}>{fMXN(totalVentasMes)} / {fMXN(metaMensual)}</div>
         </div>
-        <div style={{ height:10, background:C.bg, borderRadius:5, overflow:"hidden" }}>
-          <div style={{ height:"100%", width:`${progMeta}%`, background: progMeta >= 100 ? C.green : progMeta >= 70 ? C.accent : progMeta >= 40 ? C.yellow : C.red, borderRadius:5, transition:"width .5s" }} />
+        <div style={{ height: 10, background: C.bg, borderRadius: 5, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${progMeta}%`, background: progMeta >= 100 ? C.green : progMeta >= 70 ? C.accent : progMeta >= 40 ? C.yellow : C.red, borderRadius: 5, transition: "width .5s" }} />
         </div>
-        <div style={{ fontSize:11, color:C.textDim, marginTop:6 }}>{progMeta.toFixed(0)}% alcanzado {progMeta >= 100 ? "✓ META CUMPLIDA 🎉" : ""}</div>
+        <div style={{ fontSize: 11, color: C.textDim, marginTop: 6 }}>{progMeta.toFixed(0)}% alcanzado {progMeta >= 100 ? "✓ Meta cumplida" : ""}</div>
       </Card>
 
       {/* Alerts */}
       {(cobrosVencidos.length > 0 || stockBajo.length > 0) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {cobrosVencidos.length > 0 && (
-            <div style={{ background: C.red + "18", border: `1px solid ${C.red}44`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ background: C.red + "10", border: `1px solid ${C.red}33`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
               <Icon name="alert" size={16} /><span style={{ color: C.red, fontSize: 13, fontWeight: 600 }}>{cobrosVencidos.length} cobro(s) vencido(s) — {fMXN(cobrosVencidos.reduce((a, c) => a + Number(c.monto), 0))}</span>
             </div>
           )}
           {stockBajo.length > 0 && (
-            <div style={{ background: C.orange + "18", border: `1px solid ${C.orange}44`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ background: C.orange + "10", border: `1px solid ${C.orange}33`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
               <Icon name="alert" size={16} /><span style={{ color: C.orange, fontSize: 13, fontWeight: 600 }}>{stockBajo.length} producto(s) en stock bajo: {stockBajo.map(s => s.nombre).join(", ")}</span>
             </div>
           )}
