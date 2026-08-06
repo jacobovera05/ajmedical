@@ -4367,87 +4367,98 @@ export default function App() {
           .ajm-main    { padding: 16px  !important; padding-bottom: 32px !important; }
         }
         ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #1f2d45; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #C3C8DC; border-radius: 3px; }
         @media print { .ajm-sidebar, .ajm-topnav { display: none !important; } .ajm-content { margin-left: 0 !important; } }
       `}</style>
 
-      {/* ── SIDEBAR — solo desktop ── */}
-      <div className="ajm-sidebar" style={{
-        position: "fixed", left: 0, top: 0, bottom: 0, width: 220,
-        background: C.surface, borderRight: `1px solid ${C.border}`,
-        flexDirection: "column", zIndex: 20, overflowY: "auto", display: "none",
-      }}>
-        {/* Logo */}
-        <div style={{ padding: "20px 16px 16px", borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <img src="/isotipo.png" alt="AJ Medical" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: C.text }}>AJ Medical</div>
-              <div style={{ fontSize: 10, color: C.textDim }}>{userData.nombre} · {esAdmin ? "Admin" : "Operaciones"}</div>
+{/* — SIDEBAR – solo desktop — */}
+        <div className="ajm-sidebar" style={{
+          position: "fixed", left: 0, top: 0, bottom: 0, width: 220,
+          background: C.sideBg, borderRight: `1px solid ${C.sideBorder}`,
+          flexDirection: "column", zIndex: 20, overflowY: "auto", display: "none",
+        }}>
+          {/* Logo */}
+          <div style={{ padding: "20px 16px 16px", borderBottom: `1px solid ${C.sideBorder}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <img src="/isotipo.png" alt="AJ Medical" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: C.sideText }}>AJ Medical</div>
+                <div style={{ fontSize: 10, color: C.sideTextDim }}>{userData.nombre} · {esAdmin ? "Admin" : "Operaciones"}</div>
+              </div>
             </div>
           </div>
-        </div>
-        {/* Nav items */}
-        <div style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 2 }}>
-          {tabsVisibles.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
-              background: activeTab?.id === t.id ? C.accentDim : "transparent",
-              border: activeTab?.id === t.id ? `1px solid ${C.accent}33` : "1px solid transparent",
-              borderRadius: 8, cursor: "pointer", color: activeTab?.id === t.id ? C.accent : C.textDim,
-              fontFamily: "inherit", fontSize: 13, fontWeight: activeTab?.id === t.id ? 700 : 500,
-              textAlign: "left", width: "100%", transition: "all .12s",
+          {/* Nav items */}
+          <div style={{ flex: 1, padding: "12px 10px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
+            {tabsVisibles.map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)} style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
+                background: activeTab?.id === t.id ? C.sideActiveBg : "transparent",
+                border: activeTab?.id === t.id ? `1px solid ${C.sideActive}55` : "1px solid transparent",
+                borderRadius: 8, cursor: "pointer", color: activeTab?.id === t.id ? "#fff" : C.sideTextDim,
+                fontFamily: "inherit", fontSize: 13, fontWeight: activeTab?.id === t.id ? 700 : 500,
+                textAlign: "left", width: "100%", transition: "all .12s",
+              }}>
+                <Icon name={t.icon} size={16} />{t.label}
+              </button>
+            ))}
+          </div>
+          {/* Logout */}
+          <div style={{ padding: "12px 16px", borderTop: `1px solid ${C.sideBorder}` }}>
+            <button onClick={logout} style={{
+              width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              background: "none", border: `1px solid ${C.sideBorder}`, borderRadius: 8, padding: "9px 0",
+              color: C.sideTextDim, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit",
             }}>
-              <Icon name={t.icon} size={16} />{t.label}
+              Cerrar sesión
             </button>
-          ))}
+          </div>
         </div>
-        {/* Logout */}
-        <div style={{ padding: "12px 16px", borderTop: `1px solid ${C.border}` }}>
-          <button onClick={logout} style={{ width: "100%", background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px", color: C.textDim, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-            Cerrar sesión
-          </button>
-        </div>
-      </div>
 
       {/* ── CONTENIDO PRINCIPAL ── */}
       <div className="ajm-content" style={{ minHeight: "100vh" }}>
 
-        {/* TOP NAV — solo mobile */}
-        <div className="ajm-topnav" style={{
-          flexDirection: "column", position: "sticky", top: 0,
-          background: C.bg, zIndex: 10, borderBottom: `1px solid ${C.border}`,
-          padding: "12px 16px 0", display: "none",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div>
-              <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>AJ Medical</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{activeTab?.label}</div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.text }}>{userData.nombre}</div>
-                <div style={{ fontSize: 9, color: C.textDim }}>{esAdmin ? "Admin" : "Operaciones"}</div>
+{/* TOP NAV – solo mobile */}
+          <div className="ajm-topnav" style={{
+            flexDirection: "column", position: "sticky", top: 0,
+            background: C.sideBg, zIndex: 10, borderBottom: `1px solid ${C.sideBorder}`,
+            padding: "12px 16px 0", display: "none",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <img src="/isotipo.png" alt="AJ Medical" style={{ width: 26, height: 26, objectFit: "contain", flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 10, color: C.sideActive, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>AJ Medical</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: C.sideText }}>{activeTab?.label}</div>
+                </div>
               </div>
-              <button onClick={logout} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "4px 10px", color: C.textDim, fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Salir</button>
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.accentDim, border: `2px solid ${C.accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: C.accent }}>{userData.inicial}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.sideText }}>{userData.nombre}</div>
+                  <div style={{ fontSize: 9, color: C.sideTextDim }}>{esAdmin ? "Admin" : "Operaciones"}</div>
+                </div>
+                <button onClick={logout} style={{ background: "none", border: `1px solid ${C.sideBorder}`, borderRadius: 8, padding: "4px 10px", color: C.sideTextDim, cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>
+                  Salir
+                </button>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.sideActiveBg, border: `2px solid ${C.sideActive}`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                  {userData.inicial}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 10, scrollbarWidth: "none" }}>
+              {tabsVisibles.map(t => (
+                <button key={t.id} onClick={() => setTab(t.id)} style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 10px",
+                  background: activeTab?.id === t.id ? C.sideActiveBg : "transparent",
+                  border: activeTab?.id === t.id ? `1px solid ${C.sideActive}66` : "1px solid transparent",
+                  borderRadius: 10, cursor: "pointer", color: activeTab?.id === t.id ? "#fff" : C.sideTextDim,
+                  minWidth: 50, flexShrink: 0, fontFamily: "inherit", transition: "all .15s",
+                }}>
+                  <Icon name={t.icon} size={15} />
+                  <span style={{ fontSize: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{t.label}</span>
+                </button>
+              ))}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 10, scrollbarWidth: "none" }}>
-            {tabsVisibles.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 10px",
-                background: activeTab?.id === t.id ? C.accentDim : "transparent",
-                border: activeTab?.id === t.id ? `1px solid ${C.accent}44` : "1px solid transparent",
-                borderRadius: 10, cursor: "pointer", color: activeTab?.id === t.id ? C.accent : C.textDim,
-                minWidth: 50, flexShrink: 0, fontFamily: "inherit", transition: "all .15s",
-              }}>
-                <Icon name={t.icon} size={15} />
-                <span style={{ fontSize: 8, fontWeight: 600, whiteSpace: "nowrap" }}>{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* ── PAGE CONTENT ── */}
         <div className="ajm-main" style={{ padding: 16, paddingBottom: 32 }}>
