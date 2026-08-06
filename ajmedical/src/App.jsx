@@ -1671,6 +1671,8 @@ function Clientes({ data, setData, ventas }) {
 
   const save = async () => {
     if (!form.nombre) return;
+    const nombreNorm = form.nombre.trim().toLowerCase();
+    if (data.some(c => (c.nombre || "").trim().toLowerCase() === nombreNorm)) { alert("Ya existe un cliente con ese nombre."); return; }
     const nuevo = [...data, { id: uid(), ...form, fechaAlta: today() }];
     setData(nuevo); await saveData(KEYS.clientes, nuevo); setModal(false);
     setForm({ nombre: "", tipo: "Revendedor", contacto: "", telefono: "", email: "", ciudad: "", condicionesPago: "", precioPreferencial: "", notas: "", activo: true });
@@ -1962,6 +1964,10 @@ function Inventario({ data, setData, ventas }) {
   const save = async () => {
     if (!form.nombre || !form.stock) return;
     const existing = data.findIndex(x => x.sku === form.sku && form.sku);
+    if (existing < 0) {
+      const nombreNorm = form.nombre.trim().toLowerCase();
+      if (data.some(x => (x.nombre || "").trim().toLowerCase() === nombreNorm)) { alert("Ya existe un producto con ese nombre. Usa Editar en vez de crear uno nuevo."); return; }
+    }
     let nuevo;
     if (existing >= 0) { nuevo = [...data]; nuevo[existing] = { ...nuevo[existing], ...form }; }
     else { nuevo = [...data, { id: uid(), ...form, lotes: [] }]; }
@@ -2287,11 +2293,14 @@ function Cobros({ data, setData, ventas, setVentas }) {
 
   const registrarAbono = async () => {
     if (!abonoTarget || !abonoMonto) return;
-    const montoPagadoAntes = Number(abonoTarget.montoPagado || 0);
+    const latest = await loadData(KEYS.cobros);
+    const base = (latest && latest.length) ? latest : data;
+    const targetActual = base.find(c => c.id === abonoTarget.id) || abonoTarget;
+    const montoPagadoAntes = Number(targetActual.montoPagado || 0);
     const nuevoAbono = Number(abonoMonto);
     const totalPagado = montoPagadoAntes + nuevoAbono;
-    const pagadoCompleto = totalPagado >= Number(abonoTarget.monto);
-    const n = data.map(c => c.id === abonoTarget.id ? {
+    const pagadoCompleto = totalPagado >= Number(targetActual.monto);
+    const n = base.map(c => c.id === abonoTarget.id ? {
       ...c, montoPagado: totalPagado, pagado: pagadoCompleto,
       fechaPago: pagadoCompleto ? today() : c.fechaPago,
       abonos: [...(c.abonos||[]), { monto: nuevoAbono, fecha: today() }]
@@ -2417,6 +2426,8 @@ function Proveedores({ data, setData, compras, inventario }) {
 
   const save = async () => {
     if (!form.nombre) return;
+    const nombreNorm = form.nombre.trim().toLowerCase();
+    if (data.some(p => (p.nombre || "").trim().toLowerCase() === nombreNorm)) { alert("Ya existe un proveedor con ese nombre."); return; }
     const nuevo = [...data, { id: uid(), ...form, fechaAlta: today() }];
     setData(nuevo); await saveData(KEYS.proveedores, nuevo); setModal(false);
     setForm({ nombre: "", contacto: "", pais: "USA", email: "", whatsapp: "", condicionesPago: "", notas: "" });
