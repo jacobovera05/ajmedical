@@ -1980,155 +1980,178 @@ function Inventario({ data, setData, ventas }) {
     setData(n); await saveData(KEYS.inventario, n); setEditTargetI(null);
   };
 
+const [search, setSearch] = useState("");
   const sorted = [...data].sort((a, b) => {
-    const aLow = Number(a.stock) <= Number(a.puntoReorden) && a.puntoReorden;
-    const bLow = Number(b.stock) <= Number(b.puntoReorden) && b.puntoReorden;
-    return bLow - aLow;
-  });
+      const aLow = Number(a.stock) <= Number(a.puntoReorden) && a.puntoReorden;
+      const bLow = Number(b.stock) <= Number(b.puntoReorden) && b.puntoReorden;
+      return bLow - aLow;
+    });
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {delTargetI && <DeleteConfirm item={delTargetI.nombre} onConfirm={confirmDelI} onCancel={() => setDelTargetI(null)} />}
-      {editTargetI && (
-        <Modal title="Editar producto" onClose={() => setEditTargetI(null)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", gap: 10 }}>
-              <Input label="SKU" value={editTargetI.sku || ""} onChange={v => setEditTargetI(p => ({ ...p, sku: v }))} />
-              <Input label="Nombre *" value={editTargetI.nombre} onChange={v => setEditTargetI(p => ({ ...p, nombre: v }))} />
+    const filtered = search.trim()
+      ? sorted.filter(item => {
+          const q = search.trim().toLowerCase();
+          return (item.nombre || "").toLowerCase().includes(q) ||
+            (item.sku || "").toLowerCase().includes(q) ||
+            (item.proveedor || "").toLowerCase().includes(q);
+        })
+      : sorted;
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {delTargetI && <DeleteConfirm item={delTargetI.nombre} onConfirm={confirmDelI} onCancel={() => setDelTargetI(null)} />}
+        {editTargetI && (
+          <Modal title="Editar producto" onClose={() => setEditTargetI(null)}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", gap: 10 }}>
+                <Input label="SKU" value={editTargetI.sku || ""} onChange={v => setEditTargetI(p => ({ ...p, sku: v }))} />
+                <Input label="Nombre" required value={editTargetI.nombre} onChange={v => setEditTargetI(p => ({ ...p, nombre: v }))} />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <Input label="Stock actual" required type="number" value={editTargetI.stock} onChange={v => setEditTargetI(p => ({ ...p, stock: v }))} />
+                <Input label="Punto de reorden" type="number" value={editTargetI.puntoReorden || ""} onChange={v => setEditTargetI(p => ({ ...p, puntoReorden: v }))} />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <Input label="Costo unitario MXN" type="number" value={editTargetI.costoUnitario || ""} onChange={v => setEditTargetI(p => ({ ...p, costoUnitario: v }))} />
+                <Input label="Proveedor" value={editTargetI.proveedor || ""} onChange={v => setEditTargetI(p => ({ ...p, proveedor: v }))} />
+              </div>
+              <div style={{ fontSize: 12, color: C.accent }}>
+                Velocidad sugerida de reorden: {calcReorden(editTargetI.nombre)} uds/mes
+              </div>
+              <Btn onClick={saveEditI}>Guardar cambios</Btn>
             </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <Input label="Stock actual" type="number" value={editTargetI.stock} onChange={v => setEditTargetI(p => ({ ...p, stock: v }))} />
-              <Input label="Punto de reorden" type="number" value={editTargetI.puntoReorden || ""} onChange={v => setEditTargetI(p => ({ ...p, puntoReorden: v }))} />
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <Input label="Costo unitario MXN" type="number" value={editTargetI.costoUnitario || ""} onChange={v => setEditTargetI(p => ({ ...p, costoUnitario: v }))} />
-              <Input label="Proveedor" value={editTargetI.proveedor || ""} onChange={v => setEditTargetI(p => ({ ...p, proveedor: v }))} />
-            </div>
-            <div style={{ fontSize: 12, color: C.accent }}>
-              Velocidad sugerida de reorden: {calcReorden(editTargetI.nombre)} uds/mes
-            </div>
-            <Btn onClick={saveEditI}>Guardar cambios</Btn>
+          </Modal>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text }}>Inventario</h2>
+            <div style={{ fontSize: 12, color: C.textDim }}>{data.length} productos</div>
           </div>
-        </Modal>
-      )}
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.text }}>Inventario</h2>
-          <div style={{ fontSize: 12, color: C.textDim }}>{data.length} productos</div>
+          <Btn onClick={() => setModal(true)}><Icon name="plus" size={14} /> Agregar</Btn>
         </div>
-        <Btn onClick={() => setModal(true)}><Icon name="plus" size={14} /> Agregar</Btn>
-      </div>
 
-      {/* ── Dashboard de inventario ── */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Card style={{ flex: 1, minWidth: 130, background: "#0d1526", border: `1px solid ${C.blue}44` }}>
-          <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>📦 Códigos</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: C.blue }}>{totalCodigos}</div>
-          <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>{codigosConStock} con stock · {codigosSinStock} en cero</div>
-        </Card>
-        <Card style={{ flex: 1, minWidth: 130, background: "#0d1526", border: `1px solid ${C.accent}44` }}>
-          <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🔢 Piezas totales</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: C.accent }}>{totalPiezas}</div>
-          <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>unidades en stock</div>
-        </Card>
-      </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Card style={{ flex: 1, minWidth: 130, background: "#0d2218", border: `1px solid ${C.green}44` }}>
-          <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>💰 Valor a costo</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: C.green }}>{fMXN(valorCosto)}</div>
-          <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>Lo que invertiste</div>
-        </Card>
-        <Card style={{ flex: 1, minWidth: 130, background: "#1a1a2e", border: `1px solid ${C.yellow}44` }}>
-          <div style={{ fontSize: 10, color: C.textDim, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>🏷️ Valor a venta est.</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: C.yellow }}>{fMXN(valorVenta)}</div>
-          <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>Si lo liquidaras hoy · margen ~{margenInventario.toFixed(0)}%</div>
-        </Card>
-      </div>
-
-      {/* ── Lista de recompra ── */}
-      {(() => {
-        const enReorden = data.filter(i =>
-          i.puntoReorden && Number(i.puntoReorden) > 0 &&
-          Number(i.stock) <= Number(i.puntoReorden)
-        ).sort((a, b) => Number(a.stock) - Number(b.stock));
-        if (enReorden.length === 0) return null;
-        return (
-          <Card style={{ border: `1px solid ${C.red}44` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
-                🛒 Recompra urgente — {enReorden.length} producto(s)
-              </div>
-              <div style={{ fontSize: 11, color: C.textDim }}>
-                Stock ≤ punto de reorden
-              </div>
+        {data.length > 0 && (
+          <div style={{ position: "relative" }}>
+            <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.textDim, pointerEvents: "none", display: "flex" }}>
+              <Icon name="search" size={15} />
             </div>
-            {enReorden.map((item, i) => {
-              const critico = Number(item.stock) === 0;
-              const faltante = Number(item.puntoReorden) - Number(item.stock);
-              return (
-                <div key={item.id} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "8px 0", borderBottom: i < enReorden.length - 1 ? `1px solid ${C.border}` : "none"
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{item.nombre}</span>
-                      {critico
-                        ? <Tag color={C.red}>SIN STOCK</Tag>
-                        : <Tag color={C.orange}>BAJO</Tag>
-                      }
-                    </div>
-                    <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>
-                      {item.sku && <span style={{ fontFamily: "monospace", marginRight: 8 }}>{item.sku}</span>}
-                      Stock: <strong style={{ color: critico ? C.red : C.orange }}>{item.stock}</strong>
-                      {" · "}Reorden: {item.puntoReorden}
-                      {" · "}Pedir mínimo: <strong style={{ color: C.accent }}>{faltante + Number(item.puntoReorden)}</strong> uds
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right", marginLeft: 12 }}>
-                    <div style={{ fontSize: 11, color: C.textDim }}>Costo est.</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.blue }}>
-                      {fMXN((faltante + Number(item.puntoReorden)) * Number(item.costoUnitario || 0))}
-                    </div>
-                  </div>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por SKU, nombre o proveedor..."
+              style={{
+                width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+                padding: "10px 12px 10px 36px", color: C.text, fontSize: 14, fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+              }}
+              onFocus={e => e.target.style.borderColor = C.accent}
+              onBlur={e => e.target.style.borderColor = C.border}
+            />
+          </div>
+        )}
+
+        {/* — Dashboard de inventario — */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <StatCard label="Códigos" value={totalCodigos} sub={`${codigosConStock} con stock · ${codigosSinStock} en cero`} icon="package" color={C.blue} />
+          <StatCard label="Piezas totales" value={totalPiezas} sub="unidades en stock" icon="inventory" color={C.accent} />
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <StatCard label="Valor a costo" value={fMXN(valorCosto)} sub="Lo que invertiste" icon="cash" color={C.green} />
+          <StatCard label="Valor a venta est." value={fMXN(valorVenta)} sub={`Si lo liquidaras hoy · margen ~${margenInventario.toFixed(0)}%`} icon="tag" color={C.yellow} />
+        </div>
+
+        {/* — Lista de recompra — */}
+        {(() => {
+          const enReorden = data.filter(i =>
+            i.puntoReorden && Number(i.puntoReorden) > 0 &&
+            Number(i.stock) <= Number(i.puntoReorden)
+          ).sort((a, b) => Number(a.stock) - Number(b.stock));
+          if (enReorden.length === 0) return null;
+          const inversionTotal = enReorden.reduce((a, i) => {
+            const pedir = (Number(i.puntoReorden) - Number(i.stock)) + Number(i.puntoReorden);
+            return a + pedir * Number(i.costoUnitario || 0);
+          }, 0);
+          return (
+            <Card style={{ border: `1px solid ${C.red}44` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Icon name="alert" size={15} />
+                <div style={{ fontSize: 11, color: C.red, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                  Recompra urgente — {enReorden.length} producto(s)
                 </div>
-              );
-            })}
-            <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 12, color: C.textDim }}>Inversión total estimada para reponer</span>
-              <span style={{ fontSize: 13, fontWeight: 800, color: C.blue }}>
-                {fMXN(enReorden.reduce((a, i) => {
-                  const falt = (Number(i.puntoReorden) - Number(i.stock)) + Number(i.puntoReorden);
-                  return a + falt * Number(i.costoUnitario || 0);
-                }, 0))}
-              </span>
-            </div>
-          </Card>
-        );
-      })()}
-      {lotesVencidos.length > 0 && (
-        <div style={{ background: C.red + "18", border: `1px solid ${C.red}44`, borderRadius: 10, padding: "10px 14px" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.red, marginBottom: 6 }}>🚨 Lotes VENCIDOS ({lotesVencidos.length})</div>
-          {lotesVencidos.map((l, i) => (
-            <div key={i} style={{ fontSize: 12, color: C.textMid, marginBottom: 2 }}>
-              {l.producto} · Lote {l.lote || "s/n"} · {l.cantidad} uds · Venció: {fDate(l.caducidad)}
-            </div>
-          ))}
-        </div>
-      )}
-      {lotesPorCaducar.length > 0 && (
-        <div style={{ background: C.orange + "18", border: `1px solid ${C.orange}44`, borderRadius: 10, padding: "10px 14px" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.orange, marginBottom: 6 }}>⚠️ Lotes próximos a vencer — 30 días ({lotesPorCaducar.length})</div>
-          {lotesPorCaducar.map((l, i) => (
-            <div key={i} style={{ fontSize: 12, color: C.textMid, marginBottom: 2 }}>
-              {l.producto} · Lote {l.lote || "s/n"} · {l.cantidad} uds · Cad: {fDate(l.caducidad)}
-            </div>
-          ))}
-        </div>
-      )}
+              </div>
+              {enReorden.map((item, i) => {
+                const critico = Number(item.stock) === 0;
+                const pedir = (Number(item.puntoReorden) - Number(item.stock)) + Number(item.puntoReorden);
+                return (
+                  <div key={item.id} style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "8px 0", borderBottom: i < enReorden.length - 1 ? `1px solid ${C.border}` : "none",
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{item.nombre}</span>
+                        {critico ? <Tag color={C.red}>SIN STOCK</Tag> : <Tag color={C.orange}>BAJO</Tag>}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.textDim, marginTop: 2 }}>
+                        {item.sku && <span style={{ fontFamily: "monospace", marginRight: 8 }}>{item.sku}</span>}
+                        Stock: <strong style={{ color: critico ? C.red : C.orange }}>{item.stock}</strong>
+                        {" · "}Reorden: {item.puntoReorden}
+                        {" · "}Pedir mínimo: <strong style={{ color: C.accent }}>{pedir}</strong> uds
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", marginLeft: 12 }}>
+                      <div style={{ fontSize: 11, color: C.textDim }}>Costo est.</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.blue }}>{fMXN(pedir * Number(item.costoUnitario || 0))}</div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 12, color: C.textDim }}>Inversión total estimada para reponer</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.blue }}>{fMXN(inversionTotal)}</span>
+              </div>
+            </Card>
+          );
+        })()}
 
-      {sorted.map(item => {
+        {lotesVencidos.length > 0 && (
+          <div style={{ background: C.red + "10", border: `1px solid ${C.red}33`, borderRadius: 10, padding: "10px 14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: C.red, marginBottom: 6 }}>
+              <Icon name="alert" size={14} /> Lotes vencidos ({lotesVencidos.length})
+            </div>
+            {lotesVencidos.map((l, i) => (
+              <div key={i} style={{ fontSize: 12, color: C.textMid, marginBottom: 2 }}>
+                {l.producto} · Lote {l.lote || "s/n"} · {l.cantidad} uds · Venció: {fDate(l.caducidad)}
+              </div>
+            ))}
+          </div>
+        )}
+        {lotesPorCaducar.length > 0 && (
+          <div style={{ background: C.orange + "10", border: `1px solid ${C.orange}33`, borderRadius: 10, padding: "10px 14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: C.orange, marginBottom: 6 }}>
+              <Icon name="clock" size={14} /> Lotes próximos a vencer — 30 días ({lotesPorCaducar.length})
+            </div>
+            {lotesPorCaducar.map((l, i) => (
+              <div key={i} style={{ fontSize: 12, color: C.textMid, marginBottom: 2 }}>
+                {l.producto} · Lote {l.lote || "s/n"} · {l.cantidad} uds · Cad: {fDate(l.caducidad)}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {data.length === 0 ? (
+          <Card style={{ textAlign: "center", padding: "40px 20px" }}>
+            <div style={{ color: C.textDim, marginBottom: 12, display: "flex", justifyContent: "center" }}><Icon name="inventory" size={32} /></div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>Aún no tienes productos</div>
+            <div style={{ fontSize: 13, color: C.textDim, marginBottom: 16 }}>Agrega tu primer producto para empezar a controlar tu inventario.</div>
+            <Btn onClick={() => setModal(true)} style={{ margin: "0 auto" }}><Icon name="plus" size={14} /> Agregar producto</Btn>
+          </Card>
+        ) : filtered.length === 0 ? (
+          <Card style={{ textAlign: "center", padding: "32px 20px" }}>
+            <div style={{ color: C.textDim, marginBottom: 8, display: "flex", justifyContent: "center" }}><Icon name="search" size={26} /></div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Sin resultados para "{search}"</div>
+            <div style={{ fontSize: 12, color: C.textDim, marginTop: 4 }}>Prueba con otro SKU, nombre o proveedor.</div>
+          </Card>
+        ) : filtered.map(item => {
         const bajo = item.puntoReorden && Number(item.stock) <= Number(item.puntoReorden);
         const critico = Number(item.stock) === 0;
         const lotesActivos = (item.lotes || []).filter(l => l.cantidad > 0);
