@@ -508,7 +508,7 @@ const newLineCompra = () => ({ id: uid(), producto: "", cantidad: "1", costoUnit
 // ============================================================
 // VENTAS
 // ============================================================
-function Ventas({ data, setData, clientes, inventario, setInventario, cobros, setCobros }) {
+function Ventas({ data, setData, clientes, setClientes, inventario, setInventario, cobros, setCobros }) {
   const [modal, setModal] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [fecha, setFecha] = useState(today());
@@ -538,89 +538,106 @@ function Ventas({ data, setData, clientes, inventario, setInventario, cobros, se
 
   const totalGeneral = lineas.reduce((a, l) => a + Number(l.cantidad || 0) * Number(l.precioUnitario || 0), 0);
 
-  const save = async () => {
-    const nombreCliente = cliente === "__nuevo__" ? clienteNuevo : cliente;
-    // Resolver nombre real de cada línea
-    const validasRaw = lineas.filter(l => {
-      const nombre = l.producto === "__otro__" ? (l.productoManual || "").trim() : l.producto;
-      return nombre && l.cantidad && l.precioUnitario;
-    });
-    const validas = validasRaw.map(l => ({
-      ...l,
-      productoFinal: l.producto === "__otro__" ? l.productoManual.trim() : l.producto,
-    }));
-    if (!nombreCliente || validas.length === 0) return;
+const save = async () => {
+  const nombreCliente = cliente === "__nuevo__" ? clienteNuevo.trim() : cliente;
+  // Resolver nombre real de cada línea
+  const validasRaw = lineas.filter(l => {
+    const nombre = l.producto === "__otro__" ? (l.productoManual || "").trim() : l.producto;
+    return nombre && l.cantidad && l.precioUnitario;
+  });
+  const validas = validasRaw.map(l => ({
+    ...l,
+    productoFinal: l.producto === "__otro__" ? l.productoManual.trim() : l.producto,
+  }));
+  if (!nombreCliente || validas.length === 0) return;
 
-    const nuevasVentas = validas.map(l => {
-      const total = Number(l.cantidad) * Number(l.precioUnitario);
-      const utilidad = total - Number(l.cantidad) * Number(l.costo || 0);
-      return { id: uid(), fecha, cliente: nombreCliente, producto: l.productoFinal, cantidad: l.cantidad, precioUnitario: l.precioUnitario, costo: l.costo, total, utilidad, notas, formaPago: formaPago === "credito" ? "credito" : formaPago, cobrado: formaPago !== "credito", lote: (l.loteSeleccionado && l.loteSeleccionado !== "__sin_trazabilidad__") ? l.loteSeleccionado : "", caducidad: l.caducidadSeleccionada || "" };
-    });
-
-    const updatedVentas = [...data, ...nuevasVentas];
-    setData(updatedVentas); await saveData(KEYS.ventas, updatedVentas);
-
-    // Si es crédito, crear cobro pendiente automáticamente
-    if (formaPago === "credito") {
-      const totalVenta = nuevasVentas.reduce((a, v) => a + v.total, 0);
-      const nuevoCobro = { id: uid(), fechaVenta: fecha, fechaVence: fechaVenceCobro, cliente: nombreCliente, concepto: validas.map(l => l.productoFinal).join(", "), monto: totalVenta, pagado: false, notas };
-      const updatedCobros = [...cobros, nuevoCobro];
-      setCobros(updatedCobros); await saveData(KEYS.cobros, updatedCobros);
+  // Validar stock ANTES de guardar nada. Antes esto se checaba despues de haber
+  // guardado ya la venta y el cobro, dejando datos inconsistentes si faltaba stock.
+  const stockBloqueado = [];
+  for (const l of validas) {
+    const qty = Number(l.cantidad);
+    const match = findInvMatch(inventario, l.productoFinal);
+    if (match >= 0) {
+      const stockActual = Number(inventario[match].stock);
+      if (qty > stockActual) {
+        stockBloqueado.push(`⛔ ${l.productoFinal}: intentas vender ${qty} pero solo hay ${stockActual} en stock`);
+      }
     }
+  }
+  if (stockBloqueado.length) { setAlerts(stockBloqueado); return; }
 
-    // ── Actualizar inventario descontando del lote seleccionado manualmente ──
-    let updatedInv = [...inventario];
-    const newAlerts = [];
-    const stockBloqueado = [];
+  // Si el cliente es nuevo, darlo de alta en Clientes antes de usarlo en la venta
+  if (cliente === "__nuevo__" && nombreCliente) {
+    const yaExiste = clientes.some(c => c.nombre?.trim().toLowerCase() === nombreCliente.toLowerCase());
+    if (!yaExiste) {
+      const nuevoCliente = { id: uid(), nombre: nombreCliente, tipo: "Revendedor", contacto: "", telefono: "", email: "", ciudad: "", condicionesPago: "", precioPreferencial: "", notas: "", activo: true, fechaAlta: today() };
+      const updatedClientes = [...clientes, nuevoCliente];
+      setClientes(updatedClientes);
+      await saveData(KEYS.clientes, updatedClientes);
+    }
+  }
 
-    for (const l of validas) {
-      const qty = Number(l.cantidad);
-      const match = findInvMatch(updatedInv, l.productoFinal);
-      if (match >= 0) {
-        const stockActual = Number(updatedInv[match].stock);
-        if (qty > stockActual) {
-          stockBloqueado.push(`⛔ ${l.productoFinal}: intentas vender ${qty} pero solo hay ${stockActual} en stock`);
-          continue;
-        }
-        const newStock = stockActual - qty;
-        let lotesActualizados = [...(updatedInv[match].lotes || [])];
+  const nuevasVentas = validas.map(l => {
+    const total = Number(l.cantidad) * Number(l.precioUnitario);
+    const utilidad = total - Number(l.cantidad) * Number(l.costo || 0);
+    return { id: uid(), fecha, cliente: nombreCliente, producto: l.productoFinal, cantidad: l.cantidad, precioUnitario: l.precioUnitario, costo: l.costo, total, utilidad, notas, formaPago: formaPago === "credito" ? "credito" : formaPago, cobrado: formaPago !== "credito", lote: (l.loteSeleccionado && l.loteSeleccionado !== "__sin_trazabilidad__") ? l.loteSeleccionado : "", caducidad: l.caducidadSeleccionada || "" };
+  });
 
-        if (l.loteSeleccionado && l.loteSeleccionado !== "__sin_trazabilidad__") {
-          // Descontar del lote específico elegido
-          let restante = qty;
+  const updatedVentas = [...data, ...nuevasVentas];
+  setData(updatedVentas); await saveData(KEYS.ventas, updatedVentas);
+
+  // Si es credito, crear cobro pendiente automaticamente, ligado a la(s) venta(s)
+  if (formaPago === "credito") {
+    const totalVenta = nuevasVentas.reduce((a, v) => a + v.total, 0);
+    const nuevoCobro = { id: uid(), ventaId: nuevasVentas[0]?.id, ventaIds: nuevasVentas.map(v => v.id), fechaVenta: fecha, fechaVence: fechaVenceCobro, cliente: nombreCliente, concepto: validas.map(l => l.productoFinal).join(", "), monto: totalVenta, pagado: false, notas };
+    const updatedCobros = [...cobros, nuevoCobro];
+    setCobros(updatedCobros); await saveData(KEYS.cobros, updatedCobros);
+  }
+
+  // Actualizar inventario descontando del lote seleccionado manualmente (ya validamos que hay stock)
+  let updatedInv = [...inventario];
+  const newAlerts = [];
+
+  for (const l of validas) {
+    const qty = Number(l.cantidad);
+    const match = findInvMatch(updatedInv, l.productoFinal);
+    if (match >= 0) {
+      const stockActual = Number(updatedInv[match].stock);
+      const newStock = stockActual - qty;
+      let lotesActualizados = [...(updatedInv[match].lotes || [])];
+
+      if (l.loteSeleccionado && l.loteSeleccionado !== "__sin_trazabilidad__") {
+        let restante = qty;
+        lotesActualizados = lotesActualizados.map(lote => {
+          if (restante <= 0) return lote;
+          if (lote.lote !== l.loteSeleccionado) return lote;
+          const descontar = Math.min(restante, lote.cantidad);
+          restante -= descontar;
+          return { ...lote, cantidad: lote.cantidad - descontar };
+        }).filter(lote => lote.cantidad > 0);
+        if (restante > 0) {
           lotesActualizados = lotesActualizados.map(lote => {
             if (restante <= 0) return lote;
-            if (lote.lote !== l.loteSeleccionado) return lote;
             const descontar = Math.min(restante, lote.cantidad);
             restante -= descontar;
             return { ...lote, cantidad: lote.cantidad - descontar };
           }).filter(lote => lote.cantidad > 0);
-          // Si sobró por insuficiencia en ese lote, descontar del siguiente disponible
-          if (restante > 0) {
-            lotesActualizados = lotesActualizados.map(lote => {
-              if (restante <= 0) return lote;
-              const descontar = Math.min(restante, lote.cantidad);
-              restante -= descontar;
-              return { ...lote, cantidad: lote.cantidad - descontar };
-            }).filter(lote => lote.cantidad > 0);
-          }
-        } else {
-          // Sin trazabilidad: solo reducir el stock total, sin tocar lotes individuales
-          lotesActualizados = lotesActualizados;
         }
+      } else {
+        lotesActualizados = lotesActualizados;
+      }
 
-        updatedInv[match] = { ...updatedInv[match], stock: newStock, lotes: lotesActualizados };
-        if (updatedInv[match].puntoReorden && newStock <= Number(updatedInv[match].puntoReorden)) {
-          newAlerts.push(`⚠️ ${updatedInv[match].nombre}: stock en ${newStock} uds (reorden: ${updatedInv[match].puntoReorden})`);
-        }
+      updatedInv[match] = { ...updatedInv[match], stock: newStock, lotes: lotesActualizados };
+      if (updatedInv[match].puntoReorden && newStock <= Number(updatedInv[match].puntoReorden)) {
+        newAlerts.push(`⚠️ ${updatedInv[match].nombre}: stock en ${newStock} uds (reorden: ${updatedInv[match].puntoReorden})`);
       }
     }
-    setInventario(updatedInv); await saveData(KEYS.inventario, updatedInv);
-    if (stockBloqueado.length) { setAlerts(stockBloqueado); return; } // No cerrar modal si hay bloqueos
-    if (newAlerts.length) { setAlerts(newAlerts); setTimeout(() => setAlerts([]), 8000); }
+  }
+  setInventario(updatedInv); await saveData(KEYS.inventario, updatedInv);
+  if (newAlerts.length) { setAlerts(newAlerts); setTimeout(() => setAlerts([]), 8000); }
 
-    setModal(false); setFecha(today()); setCliente(""); setClienteNuevo(""); setNotas(""); setFormaPago("contado"); setFechaVenceCobro(""); setLineas([newLineVenta()]);
-  };
+  setModal(false); setFecha(today()); setCliente(""); setClienteNuevo(""); setNotas(""); setFormaPago("contado"); setFechaVenceCobro(""); setLineas([newLineVenta()]);
+};
 
   const [delTarget, setDelTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
