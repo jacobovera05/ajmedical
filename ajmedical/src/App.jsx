@@ -113,21 +113,21 @@ const Icon = ({ name, size = 18 }) => {
 // COLORS & THEME
 // ============================================================
 const C = {
-  bg: "#0a0e1a",
-  surface: "#111827",
-  card: "#1a2235",
-  border: "#1f2d45",
-  accent: "#00c2a8",
-  accentDim: "#00c2a820",
-  accentHover: "#00e5c8",
+  bg: "#0a0e24",
+  surface: "#12163f",
+  card: "#1a2050",
+  border: "#2a3170",
+  accent: "#3B5EB4",
+  accentDim: "#3B5EB420",
+  accentHover: "#5478d1",
   red: "#ff4d6d",
   orange: "#ff9a3c",
   yellow: "#ffd166",
   green: "#06d6a0",
-  blue: "#4361ee",
-  text: "#e2e8f0",
-  textDim: "#64748b",
-  textMid: "#94a3b8",
+  blue: "#242A61",
+  text: "#e8ebf7",
+  textDim: "#6b74a3",
+  textMid: "#9aa3cc",
 };
 
 // ============================================================
@@ -4365,7 +4365,7 @@ export default function App() {
         {/* Logo */}
         <div style={{ padding: "20px 16px 16px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: C.accentDim, border: `2px solid ${C.accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900, color: C.accent, flexShrink: 0 }}>{userData.inicial}</div>
+                      <img src="/isotipo.png" alt="AJ Medical" style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 800, color: C.text }}>AJ Medical</div>
               <div style={{ fontSize: 10, color: C.textDim }}>{userData.nombre} · {esAdmin ? "Admin" : "Operaciones"}</div>
