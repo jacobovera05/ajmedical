@@ -4472,7 +4472,7 @@ export default function App() {
           ) : (<>
             {activeTab?.id === "home"       && <Dashboard ventas={ventas} compras={compras} gastos={gastos} cobros={cobros} inventario={inventario} settings={settings} otrosIngresos={otrosIngresos} />}
             {activeTab?.id === "highlights" && esAdmin && <Highlights ventas={ventas} compras={compras} gastos={gastos} clientes={clientes} inventario={inventario} settings={settings} />}
-            {activeTab?.id === "ventas"     && <Ventas data={ventas} setData={setVentas} clientes={clientes} inventario={inventario} setInventario={setInventario} cobros={cobros} setCobros={setCobros} />}
+            {activeTab?.id === "ventas"     && <Ventas data={ventas} setData={setVentas} clientes={clientes} setClientes={setClientes} inventario={inventario} setInventario={setInventario} cobros={cobros} setCobros={setCobros} />}
             {activeTab?.id === "compras"    && <Compras data={compras} setData={setCompras} inventario={inventario} setInventario={setInventario} proveedores={proveedores} />}
             {activeTab?.id === "gastos"     && <Gastos data={gastos} setData={setGastos} />}
             {activeTab?.id === "otrosingresos" && <OtrosIngresos data={otrosIngresos} setData={setOtrosIngresos} />}
