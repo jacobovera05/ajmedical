@@ -15,31 +15,41 @@ const sbH = {
 
 // Carga datos de la tabla ajm_store usando la key como id
 async function loadData(key) {
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/ajm_store?id=eq.${encodeURIComponent(key)}&select=payload`,
-      { headers: sbH }
-    );
-    if (!res.ok) return [];
-    const rows = await res.json();
-    if (!rows || rows.length === 0) return [];
-    return JSON.parse(rows[0].payload) || [];
-  } catch {
-    return [];
-  }
+    try {
+          const res = await fetch(
+                  `${SUPABASE_URL}/rest/v1/ajm_store?id=eq.${encodeURIComponent(key)}&select=payload`,
+            { headers: sbH }
+                );
+          if (!res.ok) {
+                  console.error(`loadData(${key}): respuesta no OK`, res.status);
+                  return [];
+          }
+          const rows = await res.json();
+          if (!rows || rows.length === 0) return [];
+          return JSON.parse(rows[0].payload) || [];
+    } catch (e) {
+          console.error(`loadData(${key}): fallo de red/parseo, tratando como vacio`, e);
+          return [];
+    }
 }
 
-// Guarda datos en ajm_store usando upsert
+// Guarda datos en ajm_store usando upsert. Devuelve true/false para saber si se guardo.
 async function saveData(key, data) {
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/ajm_store`, {
-      method: "POST",
-      headers: sbH,
-      body: JSON.stringify({ id: key, payload: JSON.stringify(data), updated_at: new Date().toISOString() }),
-    });
-  } catch (e) {
-    console.error("Supabase error", e);
-  }
+    try {
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/ajm_store`, {
+                  method: "POST",
+                  headers: sbH,
+                  body: JSON.stringify({ id: key, payload: JSON.stringify(data), updated_at: new Date().toISOString() }),
+          });
+          if (!res.ok) {
+                  console.error(`saveData(${key}): respuesta no OK`, res.status);
+                  return false;
+          }
+          return true;
+    } catch (e) {
+          console.error(`saveData(${key}): fallo de red`, e);
+          return false;
+    }
 }
 
 // ============================================================
