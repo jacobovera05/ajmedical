@@ -3391,7 +3391,10 @@ function CanalHospitalario({ data, setData, clientes, inventario, setInventario,
   const totalGeneral = lineas.reduce((a, l) => a + Number(l.cantidad||0)*Number(l.precioUnitario||0), 0);
 
   const save = async () => {
-    const validas = lineas.filter(l => l.producto && l.cantidad && l.precioUnitario);
+    const validas = lineas.filter(l => {
+      const nombre = l.producto === "__otro__" ? (l.descripcion || "").trim() : l.producto;
+      return nombre && l.cantidad && l.precioUnitario;
+    });
     if (!hospital || validas.length === 0) return;
     const nueva = {
       id: uid(), folio: genFolio(), fecha, hospital, contacto, area, ciudad,
