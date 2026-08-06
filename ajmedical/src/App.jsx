@@ -97,8 +97,15 @@ const Icon = ({ name, size = 18 }) => {
     check: "M20 6L9 17l-5-5",
     hospital: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10 M12 7v6 M9 10h6",
     document: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
-    supplier: "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
     settings: "M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",
+    cash: "M2 7h20v10H2z M12 10a2 2 0 100 4 2 2 0 000-4z M6 10v4 M18 10v4",
+    bank: "M3 21h18 M4 21V10 M20 21V10 M2 10l10-6 10 6H2z M8 21v-7 M12 21v-7 M16 21v-7",
+    target: "M12 22a10 10 0 100-20 10 10 0 000 20z M12 16a4 4 0 100-8 4 4 0 000 8z M12 13a1 1 0 100-2 1 1 0 000 2z",
+    tag: "M20.59 13.41L13.42 20.58a2 2 0 01-2.83 0L2.83 12.83a2 2 0 010-2.83l7.17-7.17a2 2 0 012.83 0l7.76 7.76a2 2 0 010 2.82z M7.5 6.5a1 1 0 100 2 1 1 0 000-2z",
+    search: "M11 19a8 8 0 100-16 8 8 0 000 16z M21 21l-4.35-4.35",
+    lock: "M5 11h14v10H5z M8 11V7a4 4 0 118 0v4",
+    clock: "M12 22a10 10 0 100-20 10 10 0 000 20z M12 6v6l4 2",
+    package: "M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12",
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -113,21 +120,27 @@ const Icon = ({ name, size = 18 }) => {
 // COLORS & THEME
 // ============================================================
 const C = {
-  bg: "#0a0e24",
-  surface: "#12163f",
-  card: "#1a2050",
-  border: "#2a3170",
+  bg: "#F7F8FA",
+  surface: "#FFFFFF",
+  card: "#FFFFFF",
+  border: "#E4E7EE",
   accent: "#3B5EB4",
-  accentDim: "#3B5EB420",
-  accentHover: "#5478d1",
-  red: "#ff4d6d",
-  orange: "#ff9a3c",
-  yellow: "#ffd166",
-  green: "#06d6a0",
+  accentDim: "#3B5EB414",
+  accentHover: "#2E4A94",
+  red: "#DC3545",
+  orange: "#DE8A3C",
+  yellow: "#C99A1E",
+  green: "#1F9D62",
   blue: "#242A61",
-  text: "#e8ebf7",
-  textDim: "#6b74a3",
-  textMid: "#9aa3cc",
+  text: "#231F20",
+  textDim: "#9297A6",
+  textMid: "#5B6072",
+  sideBg: "#1B2153",
+  sideBorder: "#2C3372",
+  sideText: "#FFFFFF",
+  sideTextDim: "#A6ACD9",
+  sideActive: "#3B5EB4",
+  sideActiveBg: "#3B5EB42E",
 };
 
 // ============================================================
@@ -145,25 +158,29 @@ const Btn = ({ children, onClick, variant = "primary", small, style }) => {
   const base = {
     display: "inline-flex", alignItems: "center", gap: 6, border: "none",
     borderRadius: 8, cursor: "pointer", fontWeight: 600, transition: "all .15s",
-    fontSize: small ? 12 : 14, padding: small ? "6px 12px" : "10px 18px",
+    fontSize: small ? 12 : 14, padding: small ? "7px 14px" : "10px 18px",
     fontFamily: "inherit",
   };
   const variants = {
-    primary: { background: C.accent, color: "#000" },
+    primary: { background: C.accent, color: "#fff" },
     ghost: { background: "transparent", color: C.textMid, border: `1px solid ${C.border}` },
-    danger: { background: C.red + "22", color: C.red, border: `1px solid ${C.red}44` },
+    danger: { background: C.red + "14", color: C.red, border: `1px solid ${C.red}33` },
   };
   return <button onClick={onClick} style={{ ...base, ...variants[variant], ...style }}>{children}</button>;
 };
 
 const Input = ({ label, value, onChange, type = "text", placeholder, required }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
-    {label && <label style={{ fontSize: 11, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>{label}{required && " *"}</label>}
+  <div style={{ display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
+    {label && (
+      <label style={{ fontSize: 11, color: C.textMid, fontWeight: 600, textTransform: "uppercase", letterSpacing: .6 }}>
+        {label}{required ? <span style={{ color: C.accent }}> *</span> : <span style={{ color: C.textDim, textTransform: "none", fontWeight: 500, letterSpacing: 0 }}> (opcional)</span>}
+      </label>
+    )}
     <input
       type={type} value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
       style={{
-        background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
+        background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
         padding: "10px 12px", color: C.text, fontSize: 14, fontFamily: "inherit",
         outline: "none", transition: "border .15s",
       }}
@@ -174,48 +191,46 @@ const Input = ({ label, value, onChange, type = "text", placeholder, required })
 );
 
 const Select = ({ label, value, onChange, options }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
-    {label && <label style={{ fontSize: 11, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>{label}</label>}
+  <div style={{ display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
+    {label && <label style={{ fontSize: 11, color: C.textMid, fontWeight: 600, textTransform: "uppercase", letterSpacing: .6 }}>{label}</label>}
     <select value={value} onChange={e => onChange(e.target.value)}
-      style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 12px", color: C.text, fontSize: 14, fontFamily: "inherit", outline: "none" }}>
+      style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 12px", color: C.text, fontSize: 14, fontFamily: "inherit", outline: "none" }}>
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   </div>
 );
 
 const Card = ({ children, style }) => (
-  <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, ...style }}>{children}</div>
+  <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, boxShadow: "0 1px 2px rgba(35,31,32,.05)", ...style }}>{children}</div>
 );
 
-const StatCard = ({ label, value, sub, color = C.accent, icon }) => (
+const StatCard = ({ label, value, sub, color = C.blue, icon }) => (
   <Card style={{ flex: 1, minWidth: 140 }}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
       <div>
-        <div style={{ fontSize: 11, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>{label}</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color, letterSpacing: -1 }}>{value}</div>
+        <div style={{ fontSize: 11, color: C.textDim, fontWeight: 600, textTransform: "uppercase", letterSpacing: .6, marginBottom: 8 }}>{label}</div>
+        <div style={{ fontSize: 24, fontWeight: 800, color, letterSpacing: -0.5 }}>{value}</div>
         {sub && <div style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>{sub}</div>}
       </div>
-      {icon && <div style={{ color, opacity: 0.5 }}><Icon name={icon} size={22} /></div>}
+      {icon && <div style={{ color, opacity: .85 }}><Icon name={icon} size={20} /></div>}
     </div>
   </Card>
 );
 
 const Tag = ({ children, color = C.accent }) => (
-  <span style={{ background: color + "22", color, borderRadius: 6, fontSize: 11, padding: "2px 8px", fontWeight: 700 }}>{children}</span>
+  <span style={{ background: color + "16", color, borderRadius: 6, fontSize: 11, padding: "3px 8px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>{children}</span>
 );
 
-// ============================================================
-// MODAL
-// ============================================================
 const Modal = ({ title, onClose, children }) => (
   <div style={{
-    position: "fixed", inset: 0, background: "#000000bb", zIndex: 100,
+    position: "fixed", inset: 0, background: "rgba(35,31,32,.45)", zIndex: 100,
     display: "flex", alignItems: "flex-end", justifyContent: "center",
   }} onClick={e => e.target === e.currentTarget && onClose()}>
     <div style={{
       background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 520,
       maxHeight: "90vh", overflow: "auto", padding: 24,
       border: `1px solid ${C.border}`, borderBottom: "none",
+      boxShadow: "0 -8px 30px rgba(35,31,32,.14)",
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <h3 style={{ margin: 0, color: C.text, fontSize: 16, fontWeight: 700 }}>{title}</h3>
