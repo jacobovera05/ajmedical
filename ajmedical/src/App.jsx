@@ -146,7 +146,7 @@ const C = {
 const fMXN = (n) => `$${Number(n || 0).toLocaleString("es-MX", { minimumFractionDigits: 0 })}`;
 const fDate = (d) => d ? new Date(d + "T12:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : "";
 const today = () => new Date().toISOString().split("T")[0];
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+const uid = () => crypto.randomUUID();
 
 // ============================================================
 // SHARED COMPONENTS
